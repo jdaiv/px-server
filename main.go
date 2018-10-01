@@ -27,14 +27,13 @@ type Config struct {
 	JWTSecret string
 }
 
+var configLocation = flag.String("config", "config.toml", "location of config file")
+
 func main() {
 	flag.Parse()
 
-	var configLocation string
-	flag.StringVar(&configLocation, "config", "config.toml", "location of config file")
-
 	config := Config{}
-	if _, err := toml.DecodeFile(configLocation, &config); err != nil {
+	if _, err := toml.DecodeFile(*configLocation, &config); err != nil {
 		log.Printf("[server] error parsing config: %v", err)
 		os.Exit(1)
 	}
