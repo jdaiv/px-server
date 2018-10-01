@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type (
 	messageRecv struct {
@@ -83,6 +86,12 @@ func handleChatAction(source *Client, action string, data []byte) (interface{}, 
 		}
 
 		log.Printf("[chat/%s] %s joined", roomName, source.User.Name)
+
+		BroadcastToRoom(roomName, "chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s joined", source.User.Name),
+			Room:    roomName,
+			From:    "server",
+		})
 
 		return WSResponse{
 			Error:   0,
