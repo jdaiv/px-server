@@ -2,9 +2,12 @@ $exeName = "server.exe"
 
 mkdir -Force build | out-null
 
-go build -o $exeName;
+go build -o "build/$exeName";
 if ($LASTEXITCODE -eq 0) {
-    rm "build\$exeName"
-    mv $exeName build\
-    & "build\$exeName"
+    Push-Location build
+    try {
+        & ".\$exeName"
+    } finally {
+        Pop-Location
+    }
 }

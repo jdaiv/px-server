@@ -1,6 +1,7 @@
 module bitbucket.org/panicexpress/backend
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/google/uuid v1.0.0
 	github.com/gorilla/context v1.1.1 // indirect

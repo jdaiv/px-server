@@ -10,20 +10,36 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	middleware "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	_ "github.com/lib/pq"
 )
 
-var addr = flag.String("addr", "localhost:8000", "http service address")
-
-var JWTSecret = []byte("very good secret")
+var JWTSecret []byte
 
 var DB *sql.DB
 
+type Config struct {
+	Addr      string
+	DBConnStr string
+	JWTSecret string
+}
+
 func main() {
 	flag.Parse()
+
+	var configLocation string
+	flag.StringVar(&configLocation, "config", "config.toml", "location of config file")
+
+	config := Config{}
+	if _, err := toml.DecodeFile(configLocation, &config); err != nil {
+		log.Printf("[server] error parsing config: %v", err)
+		os.Exit(1)
+	}
+
+	JWTSecret = []byte(config.JWTSecret)
 
 	r := mux.NewRouter()
 	r.Use(middleware.RecoveryHandler())
@@ -32,7 +48,7 @@ func main() {
 	r.HandleFunc("/api/auth", login).Methods("POST")
 
 	var err error
-	DB, err = sql.Open("postgres", "user=postgres password=cactus dbname=game sslmode=disable")
+	DB, err = sql.Open("postgres", config.DBConnStr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,14 +59,14 @@ func main() {
 	go incomingMessages()
 
 	srv := &http.Server{
-		Addr:         *addr,
+		Addr:         config.Addr,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler:      r,
 	}
 
-	log.Printf("[server] starting on %s", *addr)
+	log.Printf("[server] starting on %s", config.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -74,4 +90,5 @@ func main() {
 	// to finalize based on context cancellation.
 	log.Println("[server] shutting down")
 	os.Exit(0)
+
 }
