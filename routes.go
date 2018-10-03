@@ -43,7 +43,8 @@ func join(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// log.Printf("[ws_recv] %s/%s", wsMsg.Scope, wsMsg.Action)
-		if wsMsg.Scope == "conn" && wsMsg.Action == "close" {
+		if wsMsg.Action.Scope == "conn" &&
+			wsMsg.Action.Type == "close" {
 			log.Printf("[ws/recv] %s closed connection", ws.RemoteAddr())
 			return
 		}
@@ -117,8 +118,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	jsonWrite(w, http.StatusOK, WSResponse{
 		Error:   0,
 		Message: "success",
-		Scope:   "auth",
-		Action:  "login",
+		Action:  WSAction{"auth", "login", "all"},
 		Data:    t,
 	})
 }
@@ -136,7 +136,6 @@ func jsonErr(w http.ResponseWriter, code int, scope, action, msg string) {
 	jsonWrite(w, code, WSResponse{
 		Error:   -1,
 		Message: msg,
-		Scope:   scope,
-		Action:  action,
+		Action:  WSAction{scope, action, "all"},
 	})
 }

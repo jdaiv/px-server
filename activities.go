@@ -18,28 +18,18 @@ type fireworkLaunch struct {
 	Lifetime float32 `json:"lifetime"`
 }
 
-func handleActivityAction(source *Client, action string, data []byte) (interface{}, error) {
+func handleActivityAction(source *Client, target string, data []byte) (interface{}, error) {
 	if !source.Authenticated {
 		return nil, ErrorUnauthenticated
 	}
 
-	switch action {
-	case "launch":
-		var msg messageRecv
+	BroadcastToRoom(target, "activity", "launch", fireworkLaunch{
+		Room:     target,
+		Hue:      rand.Intn(360),
+		Position: rand.Intn(100),
+		Lifetime: rand.Float32()*2 + 1,
+	})
 
-		if err := parseIncoming(data, &msg); err != nil {
-			return nil, err
-		}
-
-		BroadcastToRoom(msg.Room, "activity", "launch", fireworkLaunch{
-			Room:     msg.Room,
-			Hue:      rand.Intn(360),
-			Position: rand.Intn(100),
-			Lifetime: rand.Float32()*2 + 1,
-		})
-
-		log.Printf("[ws/activity] %s launched a firework", source.User.Name)
-		return nil, nil
-	}
-	return nil, ErrorMissingAction
+	log.Printf("[ws/activity] %s launched a firework", source.User.Name)
+	return nil, nil
 }

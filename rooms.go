@@ -18,6 +18,7 @@ type Room struct {
 	Name            string
 	FriendlyName    string
 	Clients         map[string]*Client
+	ClientOrder     map[int]string
 	Owner           string
 	CurrentActivity int
 }
@@ -37,6 +38,7 @@ func NewRoom(name string) (*Room, error) {
 		Name:         name,
 		FriendlyName: name,
 		Clients:      make(map[string]*Client),
+		ClientOrder:  make(map[int]string),
 	}
 	rooms[name] = r
 	return r, nil
@@ -75,11 +77,9 @@ func BroadcastToRoom(name, scope, action string, data interface{}) error {
 		}
 		// log.Printf("[chat] sending to %s", c.User.Name)
 		err := c.Conn.WriteJSON(WSResponse{
-			Error:   0,
-			Message: "success",
-			Scope:   scope,
-			Action:  action,
-			Data:    data,
+			Error:  0,
+			Action: WSAction{scope, action, name},
+			Data:   data,
 		})
 		if err != nil {
 			log.Printf("[chat] error sending to %s, removing from room (%v)", c.User.Name, err)
@@ -89,19 +89,43 @@ func BroadcastToRoom(name, scope, action string, data interface{}) error {
 	return nil
 }
 
-func (r *Room) AddClient(c *Client) error {
-	if !c.Authenticated {
-		return ErrorUnauthenticated
+func RemoveClientFromAllRooms(c *Client) {
+	for _, room := range rooms {
+		room.RemoveClient(c)
 	}
-	// if _, exists := r.Clients[c.User.Name]; exists {
-	// 	return AlreadyInRoom
+}
+
+func (r *Room) AddClient(c *Client) error {
+	// if !c.Authenticated {
+	// 	return ErrorUnauthenticated
 	// }
-	r.Clients[c.User.Name] = c
+	username := c.User.Name
+	if _, exists := r.Clients[username]; !exists {
+		r.ClientOrder[len(r.ClientOrder)] = username
+	}
+	r.Clients[username] = c
 	return nil
 }
 
 func (r *Room) RemoveClient(c *Client) {
-	if _, exists := r.Clients[c.User.Name]; exists {
-		delete(r.Clients, c.User.Name)
+	r.RemoveByUsername(c.User.Name)
+}
+
+func (r *Room) RemoveByUsername(username string) {
+	if _, exists := r.Clients[username]; exists {
+		if r.Owner == username {
+			found := false
+			for _, nextClient := range r.ClientOrder {
+				if _, exists := r.Clients[username]; exists {
+					r.Owner = nextClient
+					found = true
+					break
+				}
+			}
+			if !found {
+				log.Printf("[chat/%s] couldn't assign new owner!", r.Name)
+			}
+		}
+		delete(r.Clients, username)
 	}
 }

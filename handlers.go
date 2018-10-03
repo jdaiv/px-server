@@ -6,17 +6,21 @@ import (
 	"log"
 )
 
-type WSMessage struct {
-	Action string `json:"action"`
-	Data   string `json:"data"`
+type WSAction struct {
 	Scope  string `json:"scope"`
+	Type   string `json:"type"`
+	Target string `json:"target"`
+}
+
+type WSMessage struct {
+	Action WSAction `json:"action"`
+	Data   string   `json:"data"`
 }
 
 type WSResponse struct {
 	Error   int         `json:"error"`
 	Message string      `json:"message"`
-	Scope   string      `json:"scope"`
-	Action  string      `json:"action"`
+	Action  WSAction    `json:"action"`
 	Data    interface{} `json:"data"`
 }
 
@@ -25,14 +29,23 @@ type incomingAction struct {
 	Source *Client
 }
 
-type ScopeHandler func(source *Client, action string, data []byte) (interface{}, error)
-
 var incoming = make(chan incomingAction)
-var handlers = map[string]ScopeHandler{
-	"chat":     handleChatAction,
-	"auth":     handleAuthAction,
-	"global":   handleGlobalAction,
-	"activity": handleActivityAction,
+var wsRouter *WSRouter
+
+func configureWSRoutes() {
+	wsRouter = NewWSRouter()
+
+	wsRouter.AddHandler("global", "ping", pingHandler)
+
+	wsRouter.AddHandler("auth", "login", loginHandler)
+	wsRouter.AddHandler("auth", "logout", logoutHandler)
+
+	wsRouter.AddHandler("chat", "message", handleChatMessage)
+	wsRouter.AddHandler("chat", "list_rooms", handleListRooms)
+	wsRouter.AddHandler("chat", "join_room", handleJoinRoom)
+	wsRouter.AddHandler("chat", "create_room", handleCreateRoom)
+
+	wsRouter.AddHandler("activity", "launch", handleActivityAction)
 }
 
 func parseIncoming(data []byte, v interface{}) error {
@@ -47,12 +60,16 @@ func parseIncoming(data []byte, v interface{}) error {
 func incomingMessages() {
 	for {
 		in := <-incoming
-		scopeHandler, exists := handlers[in.Msg.Scope]
-		if !exists {
-			log.Printf("scope not found: %s", in.Msg.Scope)
-			break
+		var err error
+		var response interface{}
+		handler, err := wsRouter.GetHandler(in.Msg.Action.Scope, in.Msg.Action.Type)
+		if err != nil {
+			log.Printf("[ws/%s/%s] handler not found",
+				in.Msg.Action.Scope, in.Msg.Action.Type)
+			err = ErrorMissingAction
+		} else {
+			response, err = handler(in.Source, in.Msg.Action.Target, []byte(in.Msg.Data))
 		}
-		response, err := scopeHandler(in.Source, in.Msg.Action, []byte(in.Msg.Data))
 		if err != nil {
 			cErr, ok := err.(ClientError)
 			if !ok {
@@ -63,7 +80,6 @@ func incomingMessages() {
 			jsonErr := in.Source.Conn.WriteJSON(WSResponse{
 				Error:   cErr.Code(),
 				Message: cErr.ExternalMessage(),
-				Scope:   in.Msg.Scope,
 				Action:  in.Msg.Action,
 				Data:    nil,
 			})
@@ -79,17 +95,10 @@ func incomingMessages() {
 	}
 }
 
-func handleGlobalAction(source *Client, action string, data []byte) (interface{}, error) {
-	switch action {
-	case "ping":
-		log.Printf("[ws/ping] hello %s", source.Conn.RemoteAddr())
-		return WSResponse{
-			Error:   0,
-			Message: "success",
-			Scope:   "global",
-			Action:  "pong",
-			Data:    nil,
-		}, nil
-	}
-	return nil, ErrorMissingAction
+func pingHandler(source *Client, target string, data []byte) (interface{}, error) {
+	log.Printf("[ws/ping] hello %s", source.Conn.RemoteAddr())
+	return WSResponse{
+		Error:  0,
+		Action: WSAction{"global", "pong", "all"},
+	}, nil
 }
