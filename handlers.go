@@ -4,21 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-
-	"github.com/gorilla/websocket"
 )
-
-type Client struct {
-	Authenticated bool
-	SuperUser     bool
-	User          User
-	Conn          *websocket.Conn
-	CurrentRoom   *Room
-}
-
-// func (c *Client) WriteJSON(v interface{}) error {
-// 	if (c.Conn.)
-// }
 
 type WSMessage struct {
 	Action string `json:"action"`
@@ -41,12 +27,12 @@ type incomingAction struct {
 
 type ScopeHandler func(source *Client, action string, data []byte) (interface{}, error)
 
-var clients = make(map[*Client]bool)
 var incoming = make(chan incomingAction)
 var handlers = map[string]ScopeHandler{
-	"chat":   handleChatAction,
-	"auth":   handleAuthAction,
-	"global": handleGlobalAction,
+	"chat":     handleChatAction,
+	"auth":     handleAuthAction,
+	"global":   handleGlobalAction,
+	"activity": handleActivityAction,
 }
 
 func parseIncoming(data []byte, v interface{}) error {
@@ -70,7 +56,7 @@ func incomingMessages() {
 		if err != nil {
 			cErr, ok := err.(ClientError)
 			if !ok {
-				log.Printf("[ws_send] uncaught error: %v", err)
+				log.Printf("[ws/send] uncaught error: %v", err)
 				cErr = ErrorInternal
 			}
 			log.Printf("[ws/send] error: %v", cErr)

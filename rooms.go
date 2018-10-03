@@ -14,11 +14,12 @@ type Permissions struct {
 }
 
 type Room struct {
-	Permissions  *Permissions
-	Name         string
-	FriendlyName string
-	Clients      map[string]*Client
-	Owner        *Client
+	Permissions     *Permissions
+	Name            string
+	FriendlyName    string
+	Clients         map[string]*Client
+	Owner           string
+	CurrentActivity int
 }
 
 func AddDefaultRooms() {
@@ -32,9 +33,10 @@ func NewRoom(name string) (*Room, error) {
 		return nil, ErrorRoomExists
 	}
 	r := &Room{
-		Permissions: new(Permissions),
-		Name:        name,
-		Clients:     make(map[string]*Client),
+		Permissions:  new(Permissions),
+		Name:         name,
+		FriendlyName: name,
+		Clients:      make(map[string]*Client),
 	}
 	rooms[name] = r
 	return r, nil

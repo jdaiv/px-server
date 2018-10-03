@@ -18,9 +18,14 @@ type (
 	roomList struct {
 		Rooms []string `json:"rooms"`
 	}
+	roomCreate struct {
+		Name     string `json:"name"`
+		Activity int    `json:"activity"`
+	}
 	roomData struct {
 		Name         string `json:"name"`
 		FriendlyName string `json:"friendly_name"`
+		Activity     int    `json:"activity"`
 	}
 )
 
@@ -82,7 +87,13 @@ func handleChatAction(source *Client, action string, data []byte) (interface{}, 
 		room, exists := rooms[roomName]
 		if !exists {
 			log.Printf("[chat] %s tried to join %s", source.User.Name, roomName)
-			return nil, ErrorRoomMissing
+			return WSResponse{
+				Error:   ErrorRoomMissing.Code(),
+				Message: ErrorRoomMissing.ExternalMessage(),
+				Scope:   "chat",
+				Action:  action,
+				Data:    roomName,
+			}, nil
 		}
 
 		log.Printf("[chat/%s] %s joined", roomName, source.User.Name)
@@ -101,6 +112,7 @@ func handleChatAction(source *Client, action string, data []byte) (interface{}, 
 			Data: roomData{
 				Name:         room.Name,
 				FriendlyName: room.FriendlyName,
+				Activity:     room.CurrentActivity,
 			},
 		}, room.AddClient(source)
 
@@ -108,11 +120,24 @@ func handleChatAction(source *Client, action string, data []byte) (interface{}, 
 		if source.CurrentRoom != nil {
 			return nil, ErrorClientHasRoom
 		}
+
+		var roomInfo roomCreate
+
+		if err := parseIncoming(data, &roomInfo); err != nil {
+			return nil, err
+		}
+
+		if len(roomInfo.Name) > 255 || roomInfo.Activity < 0 || roomInfo.Activity >= ACT_MAX {
+			return nil, ErrorInvalidData
+		}
+
 		room, err := NewRoomRandom()
 		if err != nil {
 			return nil, err
 		}
-		room.Owner = source
+		room.FriendlyName = roomInfo.Name
+		room.CurrentActivity = roomInfo.Activity
+		room.Owner = source.User.Name
 		source.CurrentRoom = room
 		log.Printf("[chat/%s] %s created", room.Name, source.User.Name)
 		return WSResponse{
@@ -123,6 +148,7 @@ func handleChatAction(source *Client, action string, data []byte) (interface{}, 
 			Data: roomData{
 				Name:         room.Name,
 				FriendlyName: room.FriendlyName,
+				Activity:     room.CurrentActivity,
 			},
 		}, room.AddClient(source)
 	}

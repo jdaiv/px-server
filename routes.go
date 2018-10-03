@@ -29,12 +29,8 @@ func join(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	client := &Client{
-		Conn: ws,
-	}
-
-	clients[client] = true
-	defer delete(clients, client)
+	client := MakeClient(ws)
+	defer RemoveClient(client)
 
 	for {
 		var wsMsg WSMessage
