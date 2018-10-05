@@ -54,8 +54,6 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
-	AddDefaultRooms()
-
 	configureWSRoutes()
 	go incomingMessages()
 

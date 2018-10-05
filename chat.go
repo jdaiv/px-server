@@ -46,10 +46,18 @@ func handleChatMessage(source *Client, target string, data []byte) (interface{},
 		return nil, ErrorInvalidData
 	}
 
-	err := BroadcastToRoom(target, "chat", "new_message", messageSend{
-		Content: msg.Content,
-		From:    source.User.Name,
-	})
+	var err error
+	if target == "public" {
+		err = BroadcastToAll(target, "chat", "new_message", messageSend{
+			Content: msg.Content,
+			From:    source.User.Name,
+		})
+	} else {
+		err = BroadcastToRoom(target, "chat", "new_message", messageSend{
+			Content: msg.Content,
+			From:    source.User.Name,
+		})
+	}
 
 	if err != nil {
 		log.Printf("[chat] %s tried to send to %s", source.User.Name, target)
@@ -75,9 +83,9 @@ func handleListRooms(source *Client, target string, data []byte) (interface{}, e
 }
 
 func handleJoinRoom(source *Client, target string, data []byte) (interface{}, error) {
-	if !source.Authenticated {
-		return nil, ErrorUnauthenticated
-	}
+	// if !source.Authenticated {
+	// 	return nil, ErrorUnauthenticated
+	// }
 
 	if len(target) <= 0 || len(target) > 64 {
 		return nil, ErrorInvalidData
@@ -95,10 +103,12 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 
 	log.Printf("[chat/%s] %s joined", target, source.User.Name)
 
-	BroadcastToRoom(target, "chat", "new_message", messageSend{
-		Content: fmt.Sprintf("%s joined", source.User.Name),
-		From:    "server",
-	})
+	if source.Authenticated {
+		BroadcastToRoom(target, "chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s joined", source.User.Name),
+			From:    "server",
+		})
+	}
 
 	return WSResponse{
 		Error:   0,

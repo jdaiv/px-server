@@ -21,6 +21,9 @@ var authenticatedClients = make(map[string]*Client)
 
 func MakeClient(conn *websocket.Conn) *Client {
 	client := &Client{
+		User: User{
+			Name: fmt.Sprintf("anon (%s)", conn.RemoteAddr()),
+		},
 		Conn: conn,
 	}
 	clients[client] = true
@@ -31,13 +34,36 @@ func RemoveClient(client *Client) {
 	if client.CurrentRoom != nil {
 		RemoveClientFromAllRooms(client)
 	}
+	// this is before broadcasting a user left so we don't enter an infinite loop
+	delete(clients, client)
 	if client.Authenticated {
 		delete(authenticatedClients, client.User.Name)
+		BroadcastToAll("public", "chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s left", client.User.Name),
+			From:    "server",
+		})
 	}
-	delete(clients, client)
+}
+
+func BroadcastToAll(name, scope, action string, data interface{}) error {
+	for c := range clients {
+		err := c.Conn.WriteJSON(WSResponse{
+			Error:  0,
+			Action: WSAction{scope, action, name},
+			Data:   data,
+		})
+		if err != nil {
+			RemoveClient(c)
+		}
+	}
+	return nil
 }
 
 func (c *Client) Logout() error {
+	c.Authenticated = false
+	c.User = User{
+		Name: fmt.Sprintf("anon (%s)", c.Conn.RemoteAddr()),
+	}
 	err := c.Conn.WriteJSON(WSResponse{
 		Error:  0,
 		Action: WSAction{"auth", "logout", "all"},
@@ -81,5 +107,11 @@ func (c *Client) Authenticate(tokenStr string) error {
 	c.Authenticated = true
 
 	authenticatedClients[username] = c
+
+	BroadcastToAll("public", "chat", "new_message", messageSend{
+		Content: fmt.Sprintf("%s logged in", username),
+		From:    "server",
+	})
+
 	return nil
 }

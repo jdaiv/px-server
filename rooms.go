@@ -9,24 +9,19 @@ import (
 var rooms = make(map[string]*Room)
 
 type Permissions struct {
-	Read  bool
-	Write bool
+	Read          bool
+	Write         bool
+	TakeOwnership bool
 }
 
 type Room struct {
 	Permissions     *Permissions
 	Name            string
 	FriendlyName    string
-	Clients         map[string]*Client
-	ClientOrder     map[int]string
+	Clients         map[*Client]int
+	ClientsEnd      int
 	Owner           string
 	CurrentActivity int
-}
-
-func AddDefaultRooms() {
-	sr, _ := NewRoom("system")
-	sr.Permissions.Write = false
-	NewRoom("public")
 }
 
 func NewRoom(name string) (*Room, error) {
@@ -34,11 +29,11 @@ func NewRoom(name string) (*Room, error) {
 		return nil, ErrorRoomExists
 	}
 	r := &Room{
-		Permissions:  new(Permissions),
+		Permissions:  &Permissions{true, true, true},
 		Name:         name,
 		FriendlyName: name,
-		Clients:      make(map[string]*Client),
-		ClientOrder:  make(map[int]string),
+		Clients:      make(map[*Client]int, 0),
+		ClientsEnd:   1,
 	}
 	rooms[name] = r
 	return r, nil
@@ -71,10 +66,10 @@ func BroadcastToRoom(name, scope, action string, data interface{}) error {
 	if !exists {
 		return ErrorRoomMissing
 	}
-	for _, c := range room.Clients {
-		if !c.Authenticated {
-			continue
-		}
+	for c := range room.Clients {
+		// if !c.Authenticated {
+		// 	continue
+		// }
 		// log.Printf("[chat] sending to %s", c.User.Name)
 		err := c.Conn.WriteJSON(WSResponse{
 			Error:  0,
@@ -95,37 +90,49 @@ func RemoveClientFromAllRooms(c *Client) {
 	}
 }
 
+func (r *Room) AssignOwnership(c *Client) {
+	if c == nil {
+		r.Owner = ""
+		log.Printf("[chat/%s] cleared ownership", r.Name)
+		return
+	}
+	if !c.Authenticated {
+		log.Printf("[chat/%s] tried to assign ownership to unauthenticated client", r.Name)
+		return
+	}
+	r.Owner = c.User.Name
+	log.Printf("[chat/%s] assigned new owner: %s", r.Name, r.Owner)
+}
+
 func (r *Room) AddClient(c *Client) error {
 	// if !c.Authenticated {
 	// 	return ErrorUnauthenticated
 	// }
-	username := c.User.Name
-	if _, exists := r.Clients[username]; !exists {
-		r.ClientOrder[len(r.ClientOrder)] = username
+	if r.Owner == "" && c.Authenticated && r.Permissions.TakeOwnership {
+		r.AssignOwnership(c)
 	}
-	r.Clients[username] = c
+	r.Clients[c] = len(r.Clients)
+	r.ClientsEnd++
 	return nil
 }
 
-func (r *Room) RemoveClient(c *Client) {
-	r.RemoveByUsername(c.User.Name)
+func (r *Room) GetFirstClient() (client *Client) {
+	lowest := r.ClientsEnd
+	for c, i := range r.Clients {
+		if i < lowest && c.Authenticated {
+			client = c
+			lowest = i
+		}
+	}
+	return
 }
 
-func (r *Room) RemoveByUsername(username string) {
-	if _, exists := r.Clients[username]; exists {
-		if r.Owner == username {
-			found := false
-			for _, nextClient := range r.ClientOrder {
-				if _, exists := r.Clients[username]; exists {
-					r.Owner = nextClient
-					found = true
-					break
-				}
-			}
-			if !found {
-				log.Printf("[chat/%s] couldn't assign new owner!", r.Name)
-			}
-		}
-		delete(r.Clients, username)
+func (r *Room) RemoveClient(c *Client) {
+	username := c.User.Name
+
+	delete(r.Clients, c)
+
+	if username == r.Owner && r.Permissions.TakeOwnership {
+		r.AssignOwnership(r.GetFirstClient())
 	}
 }
