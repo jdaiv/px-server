@@ -31,9 +31,7 @@ func MakeClient(conn *websocket.Conn) *Client {
 }
 
 func RemoveClient(client *Client) {
-	if client.CurrentRoom != nil {
-		RemoveClientFromAllRooms(client)
-	}
+	RemoveClientFromAllRooms(client)
 	// this is before broadcasting a user left so we don't enter an infinite loop
 	delete(clients, client)
 	if client.Authenticated {

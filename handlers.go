@@ -42,6 +42,7 @@ func configureWSRoutes() {
 
 	wsRouter.AddHandler("chat", "message", handleChatMessage)
 	wsRouter.AddHandler("chat", "list_rooms", handleListRooms)
+	wsRouter.AddHandler("chat", "list_users", handleListUsers)
 	wsRouter.AddHandler("chat", "join_room", handleJoinRoom)
 	wsRouter.AddHandler("chat", "create_room", handleCreateRoom)
 

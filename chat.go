@@ -74,6 +74,39 @@ func handleChatMessage(source *Client, target string, data []byte) (interface{},
 	return nil, err
 }
 
+func handleListUsers(source *Client, target string, data []byte) (interface{}, error) {
+	var list []string
+	var err error
+
+	if target == "public" {
+		list = make([]string, len(authenticatedClients))
+		for _, c := range authenticatedClients {
+			if c.Authenticated {
+				list = append(list, c.User.Name)
+			}
+		}
+	} else {
+		room, exists := rooms[target]
+		if !exists {
+			err = ErrorRoomMissing
+		} else {
+			list = make([]string, len(room.Clients))
+			for c := range room.Clients {
+				if c.Authenticated {
+					list = append(list, c.User.Name)
+				}
+			}
+		}
+	}
+
+	return WSResponse{
+		Error:   0,
+		Message: "success",
+		Action:  WSAction{"chat", "list_users", target},
+		Data:    list,
+	}, err
+}
+
 func handleListRooms(source *Client, target string, data []byte) (interface{}, error) {
 	if !source.Authenticated {
 		return nil, ErrorUnauthenticated
@@ -92,6 +125,10 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	// if !source.Authenticated {
 	// 	return nil, ErrorUnauthenticated
 	// }
+
+	if source.CurrentRoom != nil {
+		return nil, ErrorClientHasRoom
+	}
 
 	if len(target) <= 0 || len(target) > 64 {
 		return nil, ErrorInvalidData
@@ -116,6 +153,12 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 		})
 	}
 
+	err := room.AddClient(source)
+	if err != nil {
+		return nil, err
+	}
+	source.CurrentRoom = room
+
 	return WSResponse{
 		Error:   0,
 		Message: "success",
@@ -125,7 +168,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 			FriendlyName: room.FriendlyName,
 			Activity:     room.CurrentActivity,
 		},
-	}, room.AddClient(source)
+	}, nil
 }
 
 func handleCreateRoom(source *Client, target string, data []byte) (interface{}, error) {
