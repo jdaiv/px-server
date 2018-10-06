@@ -11,6 +11,13 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+const (
+	USERNAME_MIN_LENGTH = 8
+	USERNAME_MAX_LENGTH = 32
+	PASSWORD_MIN_LENGTH = 8
+	PASSWORD_MAX_LENGTH = 256
+)
+
 type User struct {
 	Name       string
 	NameNormal string
@@ -35,17 +42,38 @@ func comparePassword(password string, hash []byte) error {
 }
 
 func normalizeUsername(username string) string {
-	stripped := strings.Map(func(r rune) rune {
-		if unicode.IsSpace(r) {
-			return -1
+	return norm.NFKD.String(strings.ToLower(norm.NFKD.String(username)))
+}
+
+func ValidatePassword(password string) error {
+	length := len([]rune(password))
+	if length < PASSWORD_MIN_LENGTH {
+		return ErrorPasswordTooShort
+	}
+	if length > PASSWORD_MAX_LENGTH {
+		return ErrorPasswordTooLong
+	}
+	return nil
+}
+
+func ValidateUsername(username string) error {
+	length := len([]rune(username))
+	if length <= 0 {
+		return ErrorUsernameTooShort
+	}
+	if length > USERNAME_MAX_LENGTH {
+		return ErrorUsernameTooLong
+	}
+	for _, ch := range username {
+		if unicode.IsSpace(ch) {
+			return ErrorUsernameInvalidChars
 		}
-		return r
-	}, username)
-	return norm.NFKD.String(strings.ToLower(stripped))
+	}
+	return nil
 }
 
 func CreateUser(username, password string) (User, error) {
-	user := User{}
+	user := User{NameNormal: normalizeUsername(username)}
 	var id int
 
 	hashedPassword, err := hashPassword(password)
@@ -53,10 +81,8 @@ func CreateUser(username, password string) (User, error) {
 		return user, err
 	}
 
-	nameNormal := normalizeUsername(username)
-
-	err = DB.QueryRow(`INSERT INTO players(name, name_normal, password) VALUES ($1, $2)
-        RETURNING id`, username, nameNormal, hashedPassword).Scan(&id)
+	err = DB.QueryRow(`INSERT INTO players(name, name_normal, password) VALUES ($1, $2, $3)
+        RETURNING id`, username, user.NameNormal, hashedPassword).Scan(&id)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		return user, err
@@ -67,14 +93,13 @@ func CreateUser(username, password string) (User, error) {
 	return user, nil
 }
 
-func AuthenticateUser(username, password string) (User, error) {
-	user := User{}
+func AuthenticateUser(normalizedUsername, password string) (User, error) {
+	user := User{NameNormal: normalizedUsername}
 	var passwordHash []byte
 	var email sql.NullString
-	user.NameNormal = normalizeUsername(username)
 
 	err := DB.QueryRow(`SELECT name, password, email FROM players
-        WHERE name_normal = $1`, user.NameNormal).Scan(&user.Name, &passwordHash, &email)
+        WHERE name_normal = $1`, normalizedUsername).Scan(&user.Name, &passwordHash, &email)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
@@ -91,18 +116,18 @@ func AuthenticateUser(username, password string) (User, error) {
 	err = comparePassword(password, passwordHash)
 	if err != nil {
 		log.Printf("Password Error: %v", err)
-		return user, ErrorInvalidPassword
+		return user, ErrorInvalidLogin
 	}
 
 	return user, nil
 }
 
 func LoadUser(username string) (User, error) {
-	user := User{}
+	user := User{NameNormal: username}
 	var email sql.NullString
 
 	err := DB.QueryRow(`SELECT name, email FROM players
-        WHERE name = $1`, username).Scan(&user.Name, &email)
+        WHERE name_normal = $1`, username).Scan(&user.Name, &email)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {

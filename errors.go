@@ -13,10 +13,22 @@ var (
 	ErrorMissingScope = NewClientError(1002,
 		"ws: missing scope", "missing scope")
 
-	ErrorInvalidPassword = NewClientError(3001,
-		"auth: invalid password", "invalid password")
+	ErrorInvalidLogin = NewClientError(3001,
+		"auth: invalid login", "invalid username and password combination")
 	ErrorUserMissing = NewClientError(3002,
 		"auth: user does not exist", "user not found")
+
+	ErrorUsernameTooShort = NewClientError(3101,
+		"auth: username too short", "username too short")
+	ErrorUsernameTooLong = NewClientError(3102,
+		"auth: username too long", "username too long")
+	ErrorUsernameInvalidChars = NewClientError(3103,
+		"auth: username contains invalid characters", "username contains invalid characters")
+
+	ErrorPasswordTooShort = NewClientError(3201,
+		"auth: password too short", "password too short")
+	ErrorPasswordTooLong = NewClientError(3202,
+		"auth: password too long", "password too long")
 
 	ErrorInvalidToken = NewClientError(3101,
 		"ws_auth: invalid token", "invalid token")

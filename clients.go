@@ -60,6 +60,14 @@ func BroadcastToAll(name, scope, action string, data interface{}) error {
 }
 
 func (c *Client) Logout() error {
+	if !c.Authenticated {
+		// nothing to do
+		return nil
+	}
+	BroadcastToAll("public", "chat", "new_message", messageSend{
+		Content: fmt.Sprintf("%s logged out", c.User.Name),
+		From:    "server",
+	})
 	c.Authenticated = false
 	c.User = User{
 		Name: fmt.Sprintf("anon (%s)", c.Conn.RemoteAddr()),
@@ -109,7 +117,7 @@ func (c *Client) Authenticate(tokenStr string) error {
 	authenticatedClients[username] = c
 
 	BroadcastToAll("public", "chat", "new_message", messageSend{
-		Content: fmt.Sprintf("%s logged in", username),
+		Content: fmt.Sprintf("%s logged in", c.User.Name),
 		From:    "server",
 	})
 

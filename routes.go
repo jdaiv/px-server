@@ -55,46 +55,44 @@ func join(w http.ResponseWriter, r *http.Request) {
 func login(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 
-	if len(username) < 1 {
-		jsonErr(w, http.StatusBadRequest,
-			"auth", "login", "username missing")
-		return
-	} else if len(username) > 255 {
-		jsonErr(w, http.StatusBadRequest,
-			"auth", "login", "username too long")
+	if err := ValidateUsername(username); err != nil {
+		if cErr, ok := err.(ClientError); ok {
+			jsonErr(w, "auth", "login", cErr)
+		} else {
+			log.Printf("[api/auth] error validating username: %v", err)
+			jsonErr(w, "auth", "login", ErrorInternal)
+		}
 		return
 	}
 
 	password := r.FormValue("password")
 
-	if len(password) < 8 {
-		jsonErr(w, http.StatusBadRequest,
-			"auth", "login", "password too short")
-		return
-	} else if len(password) > 512 {
-		jsonErr(w, http.StatusBadRequest,
-			"auth", "login", "password too long")
+	if err := ValidatePassword(password); err != nil {
+		if cErr, ok := err.(ClientError); ok {
+			jsonErr(w, "auth", "login", cErr)
+		} else {
+			log.Printf("[api/auth] error validating password: %v", err)
+			jsonErr(w, "auth", "login", ErrorInternal)
+		}
 		return
 	}
 
-	user, err := AuthenticateUser(username, password)
+	nName := normalizeUsername(username)
+	user, err := AuthenticateUser(nName, password)
 	if err != nil {
 		if err == ErrorUserMissing {
 			user, err = CreateUser(username, password)
 			if err != nil {
 				log.Printf("[api/auth] error authenticating user: %v", err)
-				jsonErr(w, http.StatusInternalServerError,
-					"auth", "login", "internal error")
+				jsonErr(w, "auth", "login", ErrorInternal)
 				return
 			}
-		} else if err == ErrorInvalidPassword {
-			jsonErr(w, http.StatusBadRequest,
-				"auth", "login", "invalid password")
+		} else if err == ErrorInvalidLogin {
+			jsonErr(w, "auth", "login", ErrorInvalidLogin)
 			return
 		} else {
 			log.Printf("[api/auth] error authenticating user: %v", err)
-			jsonErr(w, http.StatusInternalServerError,
-				"auth", "login", "internal error")
+			jsonErr(w, "auth", "login", ErrorInternal)
 			return
 		}
 	}
@@ -102,20 +100,20 @@ func login(w http.ResponseWriter, r *http.Request) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = user.Name
+	claims["name"] = user.NameNormal
+	claims["full_name"] = user.Name
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
 	t, err := token.SignedString(JWTSecret)
 	if err != nil {
 		log.Printf("[api/auth] error authenticating user: %v", err)
-		jsonErr(w, http.StatusInternalServerError,
-			"auth", "login", "internal error")
+		jsonErr(w, "auth", "login", ErrorInternal)
 		return
 	}
 
-	log.Printf("[api/auth] %s logged in", user.Name)
+	log.Printf("[api/auth] %s logged in", user.NameNormal)
 
-	jsonWrite(w, http.StatusOK, WSResponse{
+	jsonWrite(w, WSResponse{
 		Error:   0,
 		Message: "success",
 		Action:  WSAction{"auth", "login", "all"},
@@ -123,8 +121,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func jsonWrite(w http.ResponseWriter, code int, v interface{}) {
-	// w.WriteHeader(code)
+func jsonWrite(w http.ResponseWriter, v interface{}) {
 	encoder := json.NewEncoder(w)
 	err := encoder.Encode(v)
 	if err != nil {
@@ -132,10 +129,10 @@ func jsonWrite(w http.ResponseWriter, code int, v interface{}) {
 	}
 }
 
-func jsonErr(w http.ResponseWriter, code int, scope, action, msg string) {
-	jsonWrite(w, code, WSResponse{
-		Error:   -1,
-		Message: msg,
+func jsonErr(w http.ResponseWriter, scope, action string, err ClientError) {
+	jsonWrite(w, WSResponse{
+		Error:   err.Code(),
+		Message: err.ExternalMessage(),
 		Action:  WSAction{scope, action, "all"},
 	})
 }
