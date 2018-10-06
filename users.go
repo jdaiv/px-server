@@ -4,14 +4,18 @@ import (
 	"crypto/sha512"
 	"database/sql"
 	"log"
+	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/unicode/norm"
 )
 
 type User struct {
-	Name  string
-	Email string
-	Data  UserData
+	Name       string
+	NameNormal string
+	Email      string
+	Data       UserData
 }
 
 type UserData struct {
@@ -30,6 +34,16 @@ func comparePassword(password string, hash []byte) error {
 	return bcrypt.CompareHashAndPassword(hash, preparePassword(password))
 }
 
+func normalizeUsername(username string) string {
+	stripped := strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, username)
+	return norm.NFKD.String(strings.ToLower(stripped))
+}
+
 func CreateUser(username, password string) (User, error) {
 	user := User{}
 	var id int
@@ -39,8 +53,10 @@ func CreateUser(username, password string) (User, error) {
 		return user, err
 	}
 
-	err = DB.QueryRow(`INSERT INTO players(name, password) VALUES ($1, $2)
-        RETURNING id`, username, hashedPassword).Scan(&id)
+	nameNormal := normalizeUsername(username)
+
+	err = DB.QueryRow(`INSERT INTO players(name, name_normal, password) VALUES ($1, $2)
+        RETURNING id`, username, nameNormal, hashedPassword).Scan(&id)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		return user, err
@@ -55,9 +71,10 @@ func AuthenticateUser(username, password string) (User, error) {
 	user := User{}
 	var passwordHash []byte
 	var email sql.NullString
+	user.NameNormal = normalizeUsername(username)
 
 	err := DB.QueryRow(`SELECT name, password, email FROM players
-        WHERE name = $1`, username).Scan(&user.Name, &passwordHash, &email)
+        WHERE name_normal = $1`, user.NameNormal).Scan(&user.Name, &passwordHash, &email)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {

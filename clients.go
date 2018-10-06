@@ -37,7 +37,7 @@ func RemoveClient(client *Client) {
 	// this is before broadcasting a user left so we don't enter an infinite loop
 	delete(clients, client)
 	if client.Authenticated {
-		delete(authenticatedClients, client.User.Name)
+		delete(authenticatedClients, client.User.NameNormal)
 		BroadcastToAll("public", "chat", "new_message", messageSend{
 			Content: fmt.Sprintf("%s left", client.User.Name),
 			From:    "server",

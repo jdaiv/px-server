@@ -17,7 +17,7 @@ func loginHandler(source *Client, target string, data []byte) (interface{}, erro
 	}
 
 	log.Printf("[ws/auth] %s logged in as %s",
-		source.Conn.RemoteAddr(), source.User.Name)
+		source.Conn.RemoteAddr(), source.User.NameNormal)
 
 	return WSResponse{
 		Error:  0,

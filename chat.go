@@ -60,9 +60,9 @@ func handleChatMessage(source *Client, target string, data []byte) (interface{},
 	}
 
 	if err != nil {
-		log.Printf("[chat] %s tried to send to %s", source.User.Name, target)
+		log.Printf("[chat] %s tried to send to %s", source.User.NameNormal, target)
 	} else {
-		log.Printf("[chat/%s] %s: %s", target, source.User.Name, msg.Content)
+		log.Printf("[chat/%s] %s: %s", target, source.User.NameNormal, msg.Content)
 	}
 
 	return nil, err
@@ -93,7 +93,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 
 	room, exists := rooms[target]
 	if !exists {
-		log.Printf("[chat] %s tried to join %s", source.User.Name, target)
+		log.Printf("[chat] %s tried to join %s", source.User.NameNormal, target)
 		return WSResponse{
 			Error:   ErrorRoomMissing.Code(),
 			Message: ErrorRoomMissing.ExternalMessage(),
@@ -101,7 +101,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 		}, nil
 	}
 
-	log.Printf("[chat/%s] %s joined", target, source.User.Name)
+	log.Printf("[chat/%s] %s joined", target, source.User.NameNormal)
 
 	if source.Authenticated {
 		BroadcastToRoom(target, "chat", "new_message", messageSend{
@@ -147,7 +147,7 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 	}
 	room.FriendlyName = roomInfo.Name
 	room.CurrentActivity = roomInfo.Activity
-	room.Owner = source.User.Name
+	room.AssignOwnership(source)
 	source.CurrentRoom = room
 	log.Printf("[chat/%s] %s created", room.Name, source.User.Name)
 	return WSResponse{

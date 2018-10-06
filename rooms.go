@@ -70,14 +70,14 @@ func BroadcastToRoom(name, scope, action string, data interface{}) error {
 		// if !c.Authenticated {
 		// 	continue
 		// }
-		// log.Printf("[chat] sending to %s", c.User.Name)
+		// log.Printf("[chat] sending to %s", c.User.NameNormal)
 		err := c.Conn.WriteJSON(WSResponse{
 			Error:  0,
 			Action: WSAction{scope, action, name},
 			Data:   data,
 		})
 		if err != nil {
-			log.Printf("[chat] error sending to %s, removing from room (%v)", c.User.Name, err)
+			log.Printf("[chat] error sending to %s, removing from room (%v)", c.User.NameNormal, err)
 			room.RemoveClient(c)
 		}
 	}
@@ -100,7 +100,7 @@ func (r *Room) AssignOwnership(c *Client) {
 		log.Printf("[chat/%s] tried to assign ownership to unauthenticated client", r.Name)
 		return
 	}
-	r.Owner = c.User.Name
+	r.Owner = c.User.NameNormal
 	log.Printf("[chat/%s] assigned new owner: %s", r.Name, r.Owner)
 }
 
@@ -128,7 +128,7 @@ func (r *Room) GetFirstClient() (client *Client) {
 }
 
 func (r *Room) RemoveClient(c *Client) {
-	username := c.User.Name
+	username := c.User.NameNormal
 
 	delete(r.Clients, c)
 

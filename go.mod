@@ -10,4 +10,5 @@ require (
 	github.com/gorilla/websocket v1.3.0
 	github.com/lib/pq v1.0.0
 	golang.org/x/crypto v0.0.0-20180910181607-0e37d006457b
+	golang.org/x/text v0.3.0
 )
