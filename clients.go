@@ -41,6 +41,7 @@ func RemoveClient(client *Client) {
 		BroadcastToAll("public", "chat", "new_message", messageSend{
 			Content: fmt.Sprintf("%s left", client.User.Name),
 			From:    "server",
+			Class:   MESSAGE_CLASS_SERVER,
 		})
 	}
 }
@@ -67,6 +68,7 @@ func (c *Client) Logout() error {
 	BroadcastToAll("public", "chat", "new_message", messageSend{
 		Content: fmt.Sprintf("%s logged out", c.User.Name),
 		From:    "server",
+		Class:   MESSAGE_CLASS_SERVER,
 	})
 	c.Authenticated = false
 	c.User = User{
@@ -119,6 +121,7 @@ func (c *Client) Authenticate(tokenStr string) error {
 	BroadcastToAll("public", "chat", "new_message", messageSend{
 		Content: fmt.Sprintf("%s logged in", c.User.Name),
 		From:    "server",
+		Class:   MESSAGE_CLASS_SERVER,
 	})
 
 	return nil

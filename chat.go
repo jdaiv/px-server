@@ -5,6 +5,11 @@ import (
 	"log"
 )
 
+const (
+	MESSAGE_CLASS_NORMAL = ""
+	MESSAGE_CLASS_SERVER = "server"
+)
+
 type (
 	messageRecv struct {
 		Content string `json:"content"`
@@ -12,6 +17,7 @@ type (
 	messageSend struct {
 		From    string `json:"from"`
 		Content string `json:"content"`
+		Class   string `json:"class"`
 	}
 	roomList struct {
 		Rooms []string `json:"rooms"`
