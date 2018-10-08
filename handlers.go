@@ -45,8 +45,10 @@ func configureWSRoutes() {
 	wsRouter.AddHandler("chat", "list_users", handleListUsers)
 	wsRouter.AddHandler("chat", "join_room", handleJoinRoom)
 	wsRouter.AddHandler("chat", "create_room", handleCreateRoom)
+	wsRouter.AddHandler("chat", "update_room", handleModifyRoom)
 
-	wsRouter.AddHandler("activity", "launch", handleActivityAction)
+	wsRouter.AddHandler("activity", "list", handleActivityList)
+	wsRouter.AddDefaultHandler("activity", handleActivityAction)
 }
 
 func parseIncoming(data []byte, v interface{}) error {
@@ -65,9 +67,15 @@ func incomingMessages() {
 		var response interface{}
 		handler, err := wsRouter.GetHandler(in.Msg.Action.Scope, in.Msg.Action.Type)
 		if err != nil {
-			log.Printf("[ws/%s/%s] handler not found",
-				in.Msg.Action.Scope, in.Msg.Action.Type)
-			err = ErrorMissingAction
+			var defaultHandler WSDefaultHandler
+			defaultHandler, err = wsRouter.GetDefaultHandler(in.Msg.Action.Scope)
+			if err != nil {
+				log.Printf("[ws/%s/%s] handler not found",
+					in.Msg.Action.Scope, in.Msg.Action.Type)
+				err = ErrorMissingAction
+			} else {
+				response, err = defaultHandler(in.Source, in.Msg.Action.Target, in.Msg.Action.Type, []byte(in.Msg.Data))
+			}
 		} else {
 			response, err = handler(in.Source, in.Msg.Action.Target, []byte(in.Msg.Data))
 		}
@@ -89,7 +97,16 @@ func incomingMessages() {
 			}
 		}
 		if response != nil {
-			if err := in.Source.Conn.WriteJSON(response); err != nil {
+			wsRespsonse, ok := response.(WSResponse)
+			if !ok {
+				wsRespsonse = WSResponse{
+					Error:   0,
+					Message: "success",
+					Action:  in.Msg.Action,
+					Data:    response,
+				}
+			}
+			if err := in.Source.Conn.WriteJSON(wsRespsonse); err != nil {
 				log.Printf("[server] error sending json payload: %v", err)
 			}
 		}

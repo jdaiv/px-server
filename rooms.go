@@ -14,14 +14,16 @@ type Permissions struct {
 	TakeOwnership bool
 }
 
+// TODO: convert to interface
 type Room struct {
-	Permissions     *Permissions
-	Name            string
-	FriendlyName    string
-	Clients         map[*Client]int
-	ClientsEnd      int
-	Owner           string
-	CurrentActivity int
+	Permissions   *Permissions
+	Name          string
+	FriendlyName  string
+	Clients       map[*Client]int
+	ClientsEnd    int
+	Owner         string
+	Activity      string
+	ActivityState interface{}
 }
 
 func NewRoom(name string) (*Room, error) {
@@ -66,21 +68,7 @@ func BroadcastToRoom(name, scope, action string, data interface{}) error {
 	if !exists {
 		return ErrorRoomMissing
 	}
-	for c := range room.Clients {
-		// if !c.Authenticated {
-		// 	continue
-		// }
-		// log.Printf("[chat] sending to %s", c.User.NameNormal)
-		err := c.Conn.WriteJSON(WSResponse{
-			Error:  0,
-			Action: WSAction{scope, action, name},
-			Data:   data,
-		})
-		if err != nil {
-			log.Printf("[chat] error sending to %s, removing from room (%v)", c.User.NameNormal, err)
-			room.RemoveClient(c)
-		}
-	}
+	room.Broadcast(scope, action, data)
 	return nil
 }
 
@@ -118,6 +106,8 @@ func (r *Room) AddClient(c *Client) error {
 
 func (r *Room) GetFirstClient() (client *Client) {
 	lowest := r.ClientsEnd
+	// this might be quicker as a standard loop from 0 -> r.ClientsEnd
+	// but I think this might handle a very sparse list better
 	for c, i := range r.Clients {
 		if i < lowest && c.Authenticated {
 			client = c
@@ -134,5 +124,28 @@ func (r *Room) RemoveClient(c *Client) {
 
 	if username == r.Owner && r.Permissions.TakeOwnership {
 		r.AssignOwnership(r.GetFirstClient())
+	}
+
+	r.Broadcast("chat", "update_room", roomData{
+		Owner: r.Owner,
+	})
+}
+
+func (r *Room) Broadcast(scope, action string, data interface{}) {
+	for c := range r.Clients {
+		// if !c.Authenticated {
+		// 	continue
+		// }
+		// log.Printf("[chat] sending to %s", c.User.NameNormal)
+		err := c.Conn.WriteJSON(WSResponse{
+			Error:  0,
+			Action: WSAction{scope, action, r.Name},
+			Data:   data,
+		})
+		if err != nil {
+			log.Printf("[chat/%s] error sending to %s, removing from room (%v)",
+				r.Name, c.User.NameNormal, err)
+			r.RemoveClient(c)
+		}
 	}
 }

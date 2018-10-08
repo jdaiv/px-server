@@ -5,16 +5,19 @@ import (
 )
 
 type WSHandler func(source *Client, target string, data []byte) (interface{}, error)
+type WSDefaultHandler func(source *Client, target string, action string, data []byte) (interface{}, error)
 
 // action - scope/type/target
 
 type WSRouter struct {
-	Handlers map[string]map[string]WSHandler
+	Handlers        map[string]map[string]WSHandler
+	DefaultHandlers map[string]WSDefaultHandler
 }
 
 func NewWSRouter() *WSRouter {
 	return &WSRouter{
-		Handlers: make(map[string]map[string]WSHandler),
+		Handlers:        make(map[string]map[string]WSHandler),
+		DefaultHandlers: make(map[string]WSDefaultHandler),
 	}
 }
 
@@ -40,4 +43,19 @@ func (r *WSRouter) GetHandler(scope, actionType string) (WSHandler, error) {
 		return nil, fmt.Errorf("wsrouters: route %s/%s doesn't exist", scope, actionType)
 	}
 	return scopeMap[actionType], nil
+}
+
+func (r *WSRouter) AddDefaultHandler(scope string, h WSDefaultHandler) error {
+	if _, hasAction := r.DefaultHandlers[scope]; hasAction {
+		return fmt.Errorf("wsrouters: route %s/_default already exists", scope)
+	}
+	r.DefaultHandlers[scope] = h
+	return nil
+}
+
+func (r *WSRouter) GetDefaultHandler(scope string) (WSDefaultHandler, error) {
+	if _, hasAction := r.DefaultHandlers[scope]; !hasAction {
+		return nil, fmt.Errorf("wsrouters: route %s/_default doesn't exist", scope)
+	}
+	return r.DefaultHandlers[scope], nil
 }

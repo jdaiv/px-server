@@ -24,12 +24,14 @@ type (
 	}
 	roomCreate struct {
 		Name     string `json:"name"`
-		Activity int    `json:"activity"`
+		Activity string `json:"activity"`
 	}
 	roomData struct {
-		Name         string `json:"name"`
-		FriendlyName string `json:"friendly_name"`
-		Activity     int    `json:"activity"`
+		Owner         string      `json:"owner"`
+		Name          string      `json:"name"`
+		FriendlyName  string      `json:"friendly_name"`
+		Activity      string      `json:"activity"`
+		ActivityState interface{} `json:"activity_state"`
 	}
 )
 
@@ -99,12 +101,7 @@ func handleListUsers(source *Client, target string, data []byte) (interface{}, e
 		}
 	}
 
-	return WSResponse{
-		Error:   0,
-		Message: "success",
-		Action:  WSAction{"chat", "list_users", target},
-		Data:    list,
-	}, err
+	return list, err
 }
 
 func handleListRooms(source *Client, target string, data []byte) (interface{}, error) {
@@ -137,11 +134,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	room, exists := rooms[target]
 	if !exists {
 		log.Printf("[chat] %s tried to join %s", source.User.NameNormal, target)
-		return WSResponse{
-			Error:   ErrorRoomMissing.Code(),
-			Message: ErrorRoomMissing.ExternalMessage(),
-			Action:  WSAction{"chat", "join_room", target},
-		}, nil
+		return nil, ErrorRoomMissing
 	}
 
 	log.Printf("[chat/%s] %s joined", target, source.User.NameNormal)
@@ -159,15 +152,11 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	}
 	source.CurrentRoom = room
 
-	return WSResponse{
-		Error:   0,
-		Message: "success",
-		Action:  WSAction{"chat", "join_room", room.Name},
-		Data: roomData{
-			Name:         room.Name,
-			FriendlyName: room.FriendlyName,
-			Activity:     room.CurrentActivity,
-		},
+	return roomData{
+		Owner:        room.Owner,
+		Name:         room.Name,
+		FriendlyName: room.FriendlyName,
+		Activity:     room.Activity,
 	}, nil
 }
 
@@ -186,7 +175,7 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 		return nil, err
 	}
 
-	if len(roomInfo.Name) > 255 || roomInfo.Activity < 0 || roomInfo.Activity >= ACT_MAX {
+	if len(roomInfo.Name) < 2 || len(roomInfo.Name) > 255 {
 		return nil, ErrorInvalidData
 	}
 
@@ -195,18 +184,73 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 		return nil, err
 	}
 	room.FriendlyName = roomInfo.Name
-	room.CurrentActivity = roomInfo.Activity
 	room.AssignOwnership(source)
 	source.CurrentRoom = room
-	log.Printf("[chat/%s] %s created", room.Name, source.User.Name)
+	log.Printf("[chat/%s] %s created with name %s", room.Name, source.User.Name, roomInfo.Name)
 	return WSResponse{
 		Error:   0,
 		Message: "success",
 		Action:  WSAction{"chat", "join_room", room.Name},
 		Data: roomData{
+			Owner:        room.Owner,
 			Name:         room.Name,
 			FriendlyName: room.FriendlyName,
-			Activity:     room.CurrentActivity,
+			Activity:     room.Activity,
 		},
 	}, room.AddClient(source)
+}
+
+func handleModifyRoom(source *Client, target string, data []byte) (interface{}, error) {
+	if !source.Authenticated {
+		return nil, ErrorUnauthenticated
+	}
+
+	room, exists := rooms[target]
+	if !exists {
+		return nil, ErrorRoomMissing
+	}
+
+	if source.CurrentRoom != room {
+		return nil, ErrorWrongRoom
+	}
+
+	if room.Owner != source.User.Name {
+		return nil, ErrorNotOwner
+	}
+
+	var _data roomCreate
+
+	if err := parseIncoming(data, &_data); err != nil {
+		return nil, err
+	}
+
+	if _data.Activity != room.Activity {
+		if len(_data.Activity) > 0 {
+			act, exists := activities[_data.Activity]
+			if !exists {
+				return nil, ErrorActMissing
+			}
+			room.Activity = _data.Activity
+			act.Init(source, room)
+			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, _data.Activity)
+		} else {
+			room.Activity = ""
+			room.ActivityState = nil
+			log.Printf("[chat/%s] %s cleared activity", room.Name, source.User.Name)
+		}
+	}
+
+	if room.FriendlyName != _data.Name {
+		room.FriendlyName = _data.Name
+		log.Printf("[chat/%s] %s changed name of room to %s", room.Name, source.User.Name, _data.Name)
+	}
+
+	room.Broadcast("chat", "update_room", roomData{
+		Owner:         room.Owner,
+		FriendlyName:  room.FriendlyName,
+		Activity:      room.Activity,
+		ActivityState: room.ActivityState,
+	})
+
+	return nil, nil
 }
