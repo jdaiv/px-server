@@ -90,17 +90,20 @@ func (r *Room) AssignOwnership(c *Client) {
 	}
 	r.Owner = c.User.NameNormal
 	log.Printf("[chat/%s] assigned new owner: %s", r.Name, r.Owner)
+	r.Broadcast("chat", "update_room", roomData{
+		Owner: r.Owner,
+	})
 }
 
 func (r *Room) AddClient(c *Client) error {
 	// if !c.Authenticated {
 	// 	return ErrorUnauthenticated
 	// }
+	r.Clients[c] = len(r.Clients)
+	r.ClientsEnd++
 	if r.Owner == "" && c.Authenticated && r.Permissions.TakeOwnership {
 		r.AssignOwnership(c)
 	}
-	r.Clients[c] = len(r.Clients)
-	r.ClientsEnd++
 	return nil
 }
 
@@ -125,10 +128,6 @@ func (r *Room) RemoveClient(c *Client) {
 	if username == r.Owner && r.Permissions.TakeOwnership {
 		r.AssignOwnership(r.GetFirstClient())
 	}
-
-	r.Broadcast("chat", "update_room", roomData{
-		Owner: r.Owner,
-	})
 }
 
 func (r *Room) Broadcast(scope, action string, data interface{}) {
@@ -148,4 +147,14 @@ func (r *Room) Broadcast(scope, action string, data interface{}) {
 			r.RemoveClient(c)
 		}
 	}
+}
+
+func (r *Room) BroadcastState() {
+	r.Broadcast("chat", "update_room", roomData{
+		Owner:         r.Owner,
+		Name:          r.Name,
+		FriendlyName:  r.FriendlyName,
+		Activity:      r.Activity,
+		ActivityState: r.ActivityState,
+	})
 }

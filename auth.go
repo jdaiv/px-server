@@ -27,5 +27,5 @@ func loginHandler(source *Client, target string, data []byte) (interface{}, erro
 }
 
 func logoutHandler(source *Client, target string, data []byte) (interface{}, error) {
-	return nil, source.Logout()
+	return true, source.Logout()
 }

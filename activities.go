@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"math/rand"
-	"sort"
 )
 
 type ActivityHandler func(source *Client, room *Room, action string, data []byte) (interface{}, error)
@@ -16,18 +15,22 @@ type Activity struct {
 
 var activities = map[string]Activity{
 	"fireworks": Activity{
-		Name:    "Fireworks",
+		Name:    "fireworks",
 		Handler: fireworksHandler,
 		Init:    fireworksInit,
+	},
+	"cards": Activity{
+		Name:    "bootleg hearthstone",
+		Handler: cardsHandler,
+		Init:    cardsInit,
 	},
 }
 
 func handleActivityList(source *Client, target string, data []byte) (interface{}, error) {
-	var list []string
-	for k := range activities {
-		list = append(list, k)
+	list := make(map[string]string)
+	for k, a := range activities {
+		list[k] = a.Name
 	}
-	sort.Strings(list)
 
 	return list, nil
 }
@@ -79,5 +82,33 @@ func fireworksHandler(source *Client, room *Room, action string, data []byte) (i
 }
 
 func fireworksInit(owner *Client, room *Room) error {
+	return nil
+}
+
+// --- bootleg hearthstone ---
+
+type cardsState struct {
+	Hue      int     `json:"hue"`
+	Position int     `json:"position"`
+	Lifetime float32 `json:"lifetime"`
+}
+
+func cardsHandler(source *Client, room *Room, action string, data []byte) (interface{}, error) {
+	if action != "launch" {
+		return nil, ErrorActInvalidAction
+	}
+
+	room.Broadcast("activity", "launch", fireworkLaunch{
+		Hue:      rand.Intn(360),
+		Position: rand.Intn(100),
+		Lifetime: rand.Float32()*2 + 1,
+	})
+
+	log.Printf("[ws/activity] %s launched a firework", source.User.Name)
+
+	return nil, nil
+}
+
+func cardsInit(owner *Client, room *Room) error {
 	return nil
 }

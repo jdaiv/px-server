@@ -21,11 +21,9 @@ var authenticatedClients = make(map[string]*Client)
 
 func MakeClient(conn *websocket.Conn) *Client {
 	client := &Client{
-		User: User{
-			Name: fmt.Sprintf("anon (%s)", conn.RemoteAddr()),
-		},
 		Conn: conn,
 	}
+	client.MakeAnon()
 	clients[client] = true
 	return client
 }
@@ -58,6 +56,21 @@ func BroadcastToAll(name, scope, action string, data interface{}) error {
 	return nil
 }
 
+func (c *Client) MakeAnon() {
+	if c.CurrentRoom != nil {
+		c.CurrentRoom.RemoveClient(c)
+	}
+	c.Authenticated = false
+	anonName := fmt.Sprintf("anon (%s)", c.Conn.RemoteAddr())
+	c.User = User{
+		Name:       anonName,
+		NameNormal: anonName,
+	}
+	if c.CurrentRoom != nil {
+		c.CurrentRoom.AddClient(c)
+	}
+}
+
 func (c *Client) Logout() error {
 	if !c.Authenticated {
 		// nothing to do
@@ -68,10 +81,8 @@ func (c *Client) Logout() error {
 		From:    "server",
 		Class:   MESSAGE_CLASS_SERVER,
 	})
-	c.Authenticated = false
-	c.User = User{
-		Name: fmt.Sprintf("anon (%s)", c.Conn.RemoteAddr()),
-	}
+	delete(authenticatedClients, c.User.NameNormal)
+	c.MakeAnon()
 	err := c.Conn.WriteJSON(WSResponse{
 		Error:  0,
 		Action: WSAction{"auth", "logout", "all"},
@@ -111,10 +122,23 @@ func (c *Client) Authenticate(tokenStr string) error {
 		return ErrorUserMissing
 	}
 
+	if c.CurrentRoom != nil {
+		c.CurrentRoom.RemoveClient(c)
+	}
+
 	c.User = user
 	c.Authenticated = true
 
 	authenticatedClients[username] = c
+
+	if c.CurrentRoom != nil {
+		c.CurrentRoom.AddClient(c)
+		c.CurrentRoom.Broadcast("chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s logged in", c.User.Name),
+			From:    "server",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
+	}
 
 	BroadcastToAll("public", "chat", "new_message", messageSend{
 		Content: fmt.Sprintf("%s logged in", c.User.Name),

@@ -214,7 +214,7 @@ func handleModifyRoom(source *Client, target string, data []byte) (interface{}, 
 		return nil, ErrorWrongRoom
 	}
 
-	if room.Owner != source.User.Name {
+	if room.Owner != source.User.NameNormal {
 		return nil, ErrorNotOwner
 	}
 
@@ -222,6 +222,14 @@ func handleModifyRoom(source *Client, target string, data []byte) (interface{}, 
 
 	if err := parseIncoming(data, &_data); err != nil {
 		return nil, err
+	}
+
+	if len(_data.Name) < 2 || len(_data.Name) > 255 {
+		return nil, ErrorInvalidData
+	}
+
+	if len(_data.Activity) > 0 && (len(_data.Activity) < 2 || len(_data.Activity) > 255) {
+		return nil, ErrorInvalidData
 	}
 
 	if _data.Activity != room.Activity {
@@ -233,24 +241,34 @@ func handleModifyRoom(source *Client, target string, data []byte) (interface{}, 
 			room.Activity = _data.Activity
 			act.Init(source, room)
 			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, _data.Activity)
+			room.Broadcast("chat", "new_message", messageSend{
+				Content: fmt.Sprintf("changed activity to %s", _data.Activity),
+				From:    "server",
+				Class:   MESSAGE_CLASS_SERVER,
+			})
 		} else {
 			room.Activity = ""
 			room.ActivityState = nil
 			log.Printf("[chat/%s] %s cleared activity", room.Name, source.User.Name)
+			room.Broadcast("chat", "new_message", messageSend{
+				Content: "stopped the current activity",
+				From:    "server",
+				Class:   MESSAGE_CLASS_SERVER,
+			})
 		}
 	}
 
 	if room.FriendlyName != _data.Name {
 		room.FriendlyName = _data.Name
 		log.Printf("[chat/%s] %s changed name of room to %s", room.Name, source.User.Name, _data.Name)
+		room.Broadcast("chat", "new_message", messageSend{
+			Content: fmt.Sprintf("changed room name to %s", _data.Name),
+			From:    "server",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
 	}
 
-	room.Broadcast("chat", "update_room", roomData{
-		Owner:         room.Owner,
-		FriendlyName:  room.FriendlyName,
-		Activity:      room.Activity,
-		ActivityState: room.ActivityState,
-	})
+	room.BroadcastState()
 
 	return nil, nil
 }
