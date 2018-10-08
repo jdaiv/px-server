@@ -90,9 +90,7 @@ func (r *Room) AssignOwnership(c *Client) {
 	}
 	r.Owner = c.User.NameNormal
 	log.Printf("[chat/%s] assigned new owner: %s", r.Name, r.Owner)
-	r.Broadcast("chat", "update_room", roomData{
-		Owner: r.Owner,
-	})
+	r.BroadcastState()
 }
 
 func (r *Room) AddClient(c *Client) error {
