@@ -143,6 +143,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 		BroadcastToRoom(target, "chat", "new_message", messageSend{
 			Content: fmt.Sprintf("%s joined", source.User.Name),
 			From:    "server",
+			Class:   MESSAGE_CLASS_SERVER,
 		})
 	}
 
@@ -244,7 +245,7 @@ func handleModifyRoom(source *Client, target string, data []byte) (interface{}, 
 			act.Init(source, room)
 			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, _data.Activity)
 			room.Broadcast("chat", "new_message", messageSend{
-				Content: fmt.Sprintf("changed activity to %s", _data.Activity),
+				Content: fmt.Sprintf("changed activity to %s", act.Name),
 				From:    "server",
 				Class:   MESSAGE_CLASS_SERVER,
 			})
