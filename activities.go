@@ -128,7 +128,8 @@ func tictactoeHandler(source *Client, room *Room, action string, data []byte) (i
 		return nil, nil
 	}
 
-	if state.CurrentPlayer != 0 && source.User.NameNormal == room.Owner {
+	if (state.CurrentPlayer != 0 && source.User.NameNormal == room.Owner) ||
+		(state.CurrentPlayer == 0 && source.User.NameNormal != room.Owner) {
 		log.Println("player tried to take turn out of order")
 		return nil, ErrorActInvalidAction
 	}
