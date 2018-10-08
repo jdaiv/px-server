@@ -153,10 +153,11 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	source.CurrentRoom = room
 
 	return roomData{
-		Owner:        room.Owner,
-		Name:         room.Name,
-		FriendlyName: room.FriendlyName,
-		Activity:     room.Activity,
+		Owner:         room.Owner,
+		Name:          room.Name,
+		FriendlyName:  room.FriendlyName,
+		Activity:      room.Activity,
+		ActivityState: room.ActivityState,
 	}, nil
 }
 
@@ -192,10 +193,11 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 		Message: "success",
 		Action:  WSAction{"chat", "join_room", room.Name},
 		Data: roomData{
-			Owner:        room.Owner,
-			Name:         room.Name,
-			FriendlyName: room.FriendlyName,
-			Activity:     room.Activity,
+			Owner:         room.Owner,
+			Name:          room.Name,
+			FriendlyName:  room.FriendlyName,
+			Activity:      room.Activity,
+			ActivityState: room.ActivityState,
 		},
 	}, room.AddClient(source)
 }
