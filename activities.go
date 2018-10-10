@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 )
@@ -185,6 +186,30 @@ func (a *TictactoeActivity) Tick(source *Client, action string, data []byte) (in
 		if draw {
 			a.Winner = 3
 		}
+	}
+
+	switch a.Winner {
+	case 1:
+		a.Room.Broadcast("chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s wins!", a.Owner.User.Name),
+			From:    "activity",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
+		break
+	case 2:
+		a.Room.Broadcast("chat", "new_message", messageSend{
+			Content: fmt.Sprintf("%s wins!", source.User.Name),
+			From:    "activity",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
+		break
+	case 3:
+		a.Room.Broadcast("chat", "new_message", messageSend{
+			Content: "draw",
+			From:    "activity",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
+		break
 	}
 
 	if a.CurrentPlayer == 0 {
