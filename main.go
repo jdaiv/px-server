@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -39,6 +40,8 @@ func main() {
 	}
 
 	JWTSecret = []byte(config.JWTSecret)
+
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	r := mux.NewRouter()
 	r.Use(middleware.RecoveryHandler())

@@ -129,7 +129,7 @@ func (a *TictactoeActivity) Name() string {
 func (a *TictactoeActivity) Init(owner *Client, room *Room) error {
 	a.Owner = owner
 	a.Room = room
-	a.CurrentPlayer = rand.Intn(2)
+	a.CurrentPlayer = rand.Intn(50) % 2
 	return nil
 }
 
