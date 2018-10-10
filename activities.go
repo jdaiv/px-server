@@ -123,7 +123,7 @@ var winConditions = []int{
 }
 
 func (a *TictactoeActivity) Name() string {
-	return "fireworks"
+	return "tictactoe"
 }
 
 func (a *TictactoeActivity) Init(owner *Client, room *Room) error {
