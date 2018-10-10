@@ -14,16 +14,23 @@ type Permissions struct {
 	TakeOwnership bool
 }
 
-// TODO: convert to interface
+// TODO: convert to interface?
 type Room struct {
-	Permissions   *Permissions
-	Name          string
-	FriendlyName  string
-	Clients       map[*Client]int
-	ClientsEnd    int
-	Owner         string
-	Activity      string
-	ActivityState interface{}
+	Permissions  *Permissions
+	Name         string
+	FriendlyName string
+	Clients      map[*Client]int
+	ClientsEnd   int
+	Owner        string
+	Activity     Activity
+}
+
+type RoomPublicData struct {
+	Owner         string      `json:"owner"`
+	Name          string      `json:"name"`
+	FriendlyName  string      `json:"friendly_name"`
+	Activity      string      `json:"activity"`
+	ActivityState interface{} `json:"activity_state"`
 }
 
 func NewRoom(name string) (*Room, error) {
@@ -147,12 +154,19 @@ func (r *Room) Broadcast(scope, action string, data interface{}) {
 	}
 }
 
+func (r *Room) GetPublicData() RoomPublicData {
+	data := RoomPublicData{
+		Owner:        r.Owner,
+		Name:         r.Name,
+		FriendlyName: r.FriendlyName,
+	}
+	if r.Activity != nil {
+		data.Activity = r.Activity.Name()
+		data.ActivityState = r.Activity.PublicState()
+	}
+	return data
+}
+
 func (r *Room) BroadcastState() {
-	r.Broadcast("chat", "update_room", roomData{
-		Owner:         r.Owner,
-		Name:          r.Name,
-		FriendlyName:  r.FriendlyName,
-		Activity:      r.Activity,
-		ActivityState: r.ActivityState,
-	})
+	r.Broadcast("chat", "update_room", r.GetPublicData())
 }

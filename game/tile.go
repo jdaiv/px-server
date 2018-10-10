@@ -1,5 +1,7 @@
 package game
 
 type Tile struct {
-	Value int
+	Board *Board
+	Floor int
+	Piece *Piece
 }

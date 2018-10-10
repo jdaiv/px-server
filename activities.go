@@ -5,39 +5,39 @@ import (
 	"math/rand"
 )
 
-type ActivityHandler func(source *Client, room *Room, action string, data []byte) (interface{}, error)
-type ActivityInit func(owner *Client, room *Room) error
-type Activity struct {
-	Name    string
-	Handler ActivityHandler
-	Init    ActivityInit
+type Activity interface {
+	Name() string
+	Init(owner *Client, room *Room) error
+	Tick(source *Client, action string, data []byte) (interface{}, error)
+	PublicState() interface{}
 }
 
-var activities = map[string]Activity{
-	"fireworks": Activity{
-		Name:    "fireworks",
-		Handler: fireworksHandler,
-		Init:    fireworksInit,
-	},
-	"tictactoe": Activity{
-		Name:    "tic-tac-toe",
-		Handler: tictactoeHandler,
-		Init:    tictactoeInit,
-	},
-	"cards": Activity{
-		Name:    "bootleg hearthstone",
-		Handler: cardsHandler,
-		Init:    cardsInit,
-	},
+type ActivityBase struct {
+	Owner *Client `json:"-"`
+	Room  *Room   `json:"-"`
+}
+
+func MakeActivity(actType string, owner *Client, room *Room) (act Activity, err error) {
+	switch actType {
+	case "fireworks":
+		act = &FireworksActivity{}
+	case "tictactoe":
+		act = &TictactoeActivity{}
+	case "cards":
+		act = &FireworksActivity{}
+	default:
+		return nil, ErrorActMissing
+	}
+	err = act.Init(owner, room)
+	return
 }
 
 func handleActivityList(source *Client, target string, data []byte) (interface{}, error) {
-	list := make(map[string]string)
-	for k, a := range activities {
-		list[k] = a.Name
-	}
-
-	return list, nil
+	return map[string]string{
+		"fireworks": "fireworks",
+		"tictactoe": "tic-tac-toe",
+		// "cards":     "bootleg hearthstone",
+	}, nil
 }
 
 func handleActivityAction(source *Client, target, action string, data []byte) (interface{}, error) {
@@ -54,49 +54,58 @@ func handleActivityAction(source *Client, target, action string, data []byte) (i
 		return nil, ErrorWrongRoom
 	}
 
-	act, exists := activities[room.Activity]
-	if !exists {
+	if room.Activity == nil {
 		return nil, ErrorActMissing
 	}
 
-	return act.Handler(source, room, action, data)
+	return room.Activity.Tick(source, action, data)
 }
 
 // --- fireworks ---
 
-type fireworkLaunch struct {
-	Hue      int     `json:"hue"`
-	Position int     `json:"position"`
-	Lifetime float32 `json:"lifetime"`
+type FireworksActivity struct {
+	ActivityBase
 }
 
-func fireworksHandler(source *Client, room *Room, action string, data []byte) (interface{}, error) {
+func (f *FireworksActivity) Name() string {
+	return "fireworks"
+}
+
+func (f *FireworksActivity) Init(owner *Client, room *Room) error {
+	f.Owner = owner
+	f.Room = room
+	return nil
+}
+
+func (f *FireworksActivity) Tick(source *Client, action string, data []byte) (interface{}, error) {
 	if action != "launch" {
 		return nil, ErrorActInvalidAction
 	}
 
-	room.Broadcast("activity", "launch", fireworkLaunch{
-		Hue:      rand.Intn(360),
-		Position: rand.Intn(100),
-		Lifetime: rand.Float32()*2 + 1,
-	})
+	f.Room.Broadcast("activity", "launch", struct {
+		Hue      int     `json:"hue"`
+		Position int     `json:"position"`
+		Lifetime float32 `json:"lifetime"`
+	}{rand.Intn(360), rand.Intn(100), rand.Float32()*2 + 1})
 
 	log.Printf("[ws/activity] %s launched a firework", source.User.Name)
 
 	return nil, nil
 }
 
-func fireworksInit(owner *Client, room *Room) error {
+func (f *FireworksActivity) PublicState() interface{} {
 	return nil
 }
 
-// --- bootleg hearthstone ---
+// --- tic tac toe ---
 
-type tictactoeState struct {
+type TictactoeActivity struct {
+	ActivityBase
 	Board         [9]int `json:"board"`
 	CurrentPlayer int    `json:"current_player"`
 	Winner        int    `json:"winner"`
 }
+
 type tictactoeTurn struct {
 	X int `json:"x"`
 	Y int `json:"y"`
@@ -113,23 +122,28 @@ var winConditions = []int{
 	2, 4, 6,
 }
 
-func tictactoeHandler(source *Client, room *Room, action string, data []byte) (interface{}, error) {
+func (a *TictactoeActivity) Name() string {
+	return "fireworks"
+}
+
+func (a *TictactoeActivity) Init(owner *Client, room *Room) error {
+	a.Owner = owner
+	a.Room = room
+	a.CurrentPlayer = rand.Intn(2)
+	return nil
+}
+
+func (a *TictactoeActivity) Tick(source *Client, action string, data []byte) (interface{}, error) {
 	if action != "move" {
 		return nil, ErrorActInvalidAction
 	}
 
-	state, stateOk := room.ActivityState.(*tictactoeState)
-	if !stateOk {
-		log.Println("activity state not configured correctly!")
-		return nil, ErrorInternal
-	}
-
-	if state.Winner > 0 {
+	if a.Winner > 0 {
 		return nil, nil
 	}
 
-	if (state.CurrentPlayer != 0 && source.User.NameNormal == room.Owner) ||
-		(state.CurrentPlayer == 0 && source.User.NameNormal != room.Owner) {
+	if (a.CurrentPlayer != 0 && source.User.NameNormal == a.Room.Owner) ||
+		(a.CurrentPlayer == 0 && source.User.NameNormal != a.Room.Owner) {
 		log.Println("player tried to take turn out of order")
 		return nil, ErrorActInvalidAction
 	}
@@ -141,80 +155,51 @@ func tictactoeHandler(source *Client, room *Room, action string, data []byte) (i
 	}
 
 	idx := turnData.X + turnData.Y*3
-	if idx < 0 || idx > 9 || state.Board[idx] != 0 {
+	if idx < 0 || idx > 9 || a.Board[idx] != 0 {
 		return nil, ErrorActInvalidAction
 	}
 
-	state.Board[idx] = state.CurrentPlayer + 1
+	a.Board[idx] = a.CurrentPlayer + 1
 
 	for i := 0; i < len(winConditions); i += 3 {
 		x := winConditions[i+0]
 		y := winConditions[i+1]
 		z := winConditions[i+2]
-		if state.Board[x]+state.Board[y]+state.Board[z] == 0 {
+		if a.Board[x]+a.Board[y]+a.Board[z] == 0 {
 			continue
 		}
-		if state.Board[x] == state.Board[y] &&
-			state.Board[y] == state.Board[z] {
-			state.Winner = state.Board[x]
+		if a.Board[x] == a.Board[y] &&
+			a.Board[y] == a.Board[z] {
+			a.Winner = a.Board[x]
 			break
 		}
 	}
 
-	if state.Winner == 0 {
+	if a.Winner == 0 {
 		draw := true
-		for _, v := range state.Board {
+		for _, v := range a.Board {
 			if v == 0 {
 				draw = false
 			}
 		}
 		if draw {
-			state.Winner = 3
+			a.Winner = 3
 		}
 	}
 
-	if state.CurrentPlayer == 0 {
-		state.CurrentPlayer = 1
+	if a.CurrentPlayer == 0 {
+		a.CurrentPlayer = 1
 	} else {
-		state.CurrentPlayer = 0
+		a.CurrentPlayer = 0
 	}
 
-	room.BroadcastState()
+	a.Room.BroadcastState()
 
 	return nil, nil
 }
 
-func tictactoeInit(owner *Client, room *Room) error {
-	room.ActivityState = &tictactoeState{
-		CurrentPlayer: rand.Intn(2),
-	}
-	return nil
+func (a *TictactoeActivity) PublicState() interface{} {
+	return a
 }
 
 // --- bootleg hearthstone ---
-
-type cardsState struct {
-	Hue      int     `json:"hue"`
-	Position int     `json:"position"`
-	Lifetime float32 `json:"lifetime"`
-}
-
-func cardsHandler(source *Client, room *Room, action string, data []byte) (interface{}, error) {
-	if action != "launch" {
-		return nil, ErrorActInvalidAction
-	}
-
-	room.Broadcast("activity", "launch", fireworkLaunch{
-		Hue:      rand.Intn(360),
-		Position: rand.Intn(100),
-		Lifetime: rand.Float32()*2 + 1,
-	})
-
-	log.Printf("[ws/activity] %s launched a firework", source.User.Name)
-
-	return nil, nil
-}
-
-func cardsInit(owner *Client, room *Room) error {
-	return nil
-}

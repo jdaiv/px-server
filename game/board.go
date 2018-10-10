@@ -11,15 +11,21 @@ type Board struct {
 	Width  int
 	Height int
 
-	Data []Tile
+	Tiles []*Tile
 }
 
-func CreateBoard(width, height int) Board {
-	return Board{
+func CreateBoard(width, height int) *Board {
+	b := Board{
 		Width:  width,
 		Height: height,
-		Data:   make([]Tile, width*height), // eh, why not
+		Tiles:  make([]*Tile, width*height),
 	}
+	for i := 0; i < width*height; i++ {
+		b.Tiles[i] = &Tile{
+			Board: &b,
+		}
+	}
+	return &b
 }
 
 func (b *Board) CheckBounds(x, y int) bool {
@@ -31,15 +37,15 @@ func (b *Board) GetTile(x, y int) (*Tile, error) {
 		return nil, ErrorOutOfBounds
 	}
 
-	return &b.Data[b.getTileIndex(x, y)], nil
+	return b.Tiles[b.getTileIndex(x, y)], nil
 }
 
-func (b *Board) SetTile(tile Tile, x, y int) error {
+func (b *Board) SetTile(tile *Tile, x, y int) error {
 	if !b.CheckBounds(x, y) {
 		return ErrorOutOfBounds
 	}
 
-	b.Data[b.getTileIndex(x, y)] = tile
+	b.Tiles[b.getTileIndex(x, y)] = tile
 	return nil
 }
 

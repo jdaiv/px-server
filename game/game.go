@@ -8,31 +8,25 @@ const (
 )
 
 type Game struct {
-	Board  Board
-	Pieces []Piece
-
-	PlayerOne Player
-	PlayerTwo Player
+	Board     *Board
+	PlayerOne *Player
+	PlayerTwo *Player
 }
 
 type Player struct {
 	Id   string
-	Name string
 	Side int
 }
 
-func CreateGame() Game {
+func CreateGame(playerOne, playerTwo string) Game {
 	return Game{
-		Board:  CreateBoard(10, 10),
-		Pieces: make([]Piece, 40),
-		PlayerOne: Player{
-			Id:   "One",
-			Name: "One",
+		Board: CreateBoard(10, 10),
+		PlayerOne: &Player{
+			Id:   playerOne,
 			Side: SOUTH,
 		},
-		PlayerTwo: Player{
-			Id:   "Two",
-			Name: "Two",
+		PlayerTwo: &Player{
+			Id:   playerTwo,
 			Side: NORTH,
 		},
 	}

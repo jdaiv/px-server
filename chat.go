@@ -26,13 +26,6 @@ type (
 		Name     string `json:"name"`
 		Activity string `json:"activity"`
 	}
-	roomData struct {
-		Owner         string      `json:"owner"`
-		Name          string      `json:"name"`
-		FriendlyName  string      `json:"friendly_name"`
-		Activity      string      `json:"activity"`
-		ActivityState interface{} `json:"activity_state"`
-	}
 )
 
 func handleChatMessage(source *Client, target string, data []byte) (interface{}, error) {
@@ -153,13 +146,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	}
 	source.CurrentRoom = room
 
-	return roomData{
-		Owner:         room.Owner,
-		Name:          room.Name,
-		FriendlyName:  room.FriendlyName,
-		Activity:      room.Activity,
-		ActivityState: room.ActivityState,
-	}, nil
+	return room.GetPublicData(), nil
 }
 
 func handleCreateRoom(source *Client, target string, data []byte) (interface{}, error) {
@@ -193,13 +180,7 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 		Error:   0,
 		Message: "success",
 		Action:  WSAction{"chat", "join_room", room.Name},
-		Data: roomData{
-			Owner:         room.Owner,
-			Name:          room.Name,
-			FriendlyName:  room.FriendlyName,
-			Activity:      room.Activity,
-			ActivityState: room.ActivityState,
-		},
+		Data:    room.GetPublicData(),
 	}, room.AddClient(source)
 }
 
@@ -235,30 +216,28 @@ func handleModifyRoom(source *Client, target string, data []byte) (interface{}, 
 		return nil, ErrorInvalidData
 	}
 
-	if _data.Activity != room.Activity {
-		if len(_data.Activity) > 0 {
-			act, exists := activities[_data.Activity]
-			if !exists {
-				return nil, ErrorActMissing
+	if len(_data.Activity) > 0 {
+		if room.Activity == nil || (room.Activity != nil && _data.Activity != room.Activity.Name()) {
+			act, err := MakeActivity(_data.Activity, source, room)
+			if err != nil {
+				return nil, err
 			}
-			room.Activity = _data.Activity
-			act.Init(source, room)
-			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, _data.Activity)
+			room.Activity = act
+			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, act.Name())
 			room.Broadcast("chat", "new_message", messageSend{
-				Content: fmt.Sprintf("changed activity to %s", act.Name),
-				From:    "server",
-				Class:   MESSAGE_CLASS_SERVER,
-			})
-		} else {
-			room.Activity = ""
-			room.ActivityState = nil
-			log.Printf("[chat/%s] %s cleared activity", room.Name, source.User.Name)
-			room.Broadcast("chat", "new_message", messageSend{
-				Content: "stopped the current activity",
+				Content: fmt.Sprintf("changed activity to %s", act.Name()),
 				From:    "server",
 				Class:   MESSAGE_CLASS_SERVER,
 			})
 		}
+	} else {
+		room.Activity = nil
+		log.Printf("[chat/%s] %s cleared activity", room.Name, source.User.Name)
+		room.Broadcast("chat", "new_message", messageSend{
+			Content: "stopped the current activity",
+			From:    "server",
+			Class:   MESSAGE_CLASS_SERVER,
+		})
 	}
 
 	if room.FriendlyName != _data.Name {

@@ -11,11 +11,12 @@ const (
 )
 
 type Piece struct {
-	Owner Player
+	Board *Board
+	Owner *Player
 	Type  int
 }
 
-func CreatePiece(owner Player, pieceType int) Piece {
+func CreatePiece(owner *Player, pieceType int) Piece {
 	return Piece{
 		Owner: owner,
 		Type:  pieceType,
