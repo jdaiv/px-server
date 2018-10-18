@@ -85,9 +85,10 @@ func (f *FireworksActivity) Tick(source *Client, action string, data []byte) (in
 
 	f.Room.Broadcast("activity", "launch", struct {
 		Hue      int     `json:"hue"`
-		Position int     `json:"position"`
+		Position float32 `json:"position"`
 		Lifetime float32 `json:"lifetime"`
-	}{rand.Intn(360), rand.Intn(100), rand.Float32()*2 + 1})
+		Velocity float32 `json:"velocity"`
+	}{rand.Intn(360), rand.Float32(), rand.Float32()*2 + 1, rand.Float32()})
 
 	log.Printf("[ws/activity] %s launched a firework", source.User.Name)
 
