@@ -25,6 +25,7 @@ func MakeClient(conn *websocket.Conn) *Client {
 	}
 	client.MakeAnon()
 	clients[client] = true
+	Station.AddClient(client)
 	return client
 }
 

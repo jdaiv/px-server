@@ -44,7 +44,7 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	r := mux.NewRouter()
-	r.Use(middleware.RecoveryHandler())
+	// r.Use(middleware.RecoveryHandler())
 	r.Use(middleware.CORS())
 	r.HandleFunc("/api/ws", join).Methods("GET")
 	r.HandleFunc("/api/auth", login).Methods("POST")
@@ -57,6 +57,7 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
+	configureRooms()
 	configureWSRoutes()
 	go incomingMessages()
 

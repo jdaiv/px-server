@@ -28,6 +28,19 @@ type (
 	}
 )
 
+func handlePlayerMove(source *Client, target string, data []byte) (interface{}, error) {
+	var msg PlayerState
+
+	if err := parseIncoming(data, &msg); err != nil {
+		return nil, err
+	}
+
+	source.CurrentRoom.State.Players[source.User.NameNormal] = &msg
+	source.CurrentRoom.BroadcastState()
+
+	return nil, nil
+}
+
 func handleChatMessage(source *Client, target string, data []byte) (interface{}, error) {
 	if !source.Authenticated {
 		return nil, ErrorUnauthenticated
@@ -73,23 +86,14 @@ func handleListUsers(source *Client, target string, data []byte) (interface{}, e
 	var list []string
 	var err error
 
-	if target == "public" {
-		list = make([]string, len(authenticatedClients))
-		for _, c := range authenticatedClients {
+	room, exists := rooms[target]
+	if !exists {
+		err = ErrorRoomMissing
+	} else {
+		list = make([]string, len(room.Clients))
+		for c := range room.Clients {
 			if c.Authenticated {
 				list = append(list, c.User.Name)
-			}
-		}
-	} else {
-		room, exists := rooms[target]
-		if !exists {
-			err = ErrorRoomMissing
-		} else {
-			list = make([]string, len(room.Clients))
-			for c := range room.Clients {
-				if c.Authenticated {
-					list = append(list, c.User.Name)
-				}
 			}
 		}
 	}
@@ -117,7 +121,8 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	// }
 
 	if source.CurrentRoom != nil {
-		return nil, ErrorClientHasRoom
+		// return nil, ErrorClientHasRoom
+		source.CurrentRoom.RemoveClient(source)
 	}
 
 	if len(target) <= 0 || len(target) > 64 {
