@@ -160,7 +160,8 @@ func handleCreateRoom(source *Client, target string, data []byte) (interface{}, 
 	}
 
 	if source.CurrentRoom != nil {
-		return nil, ErrorClientHasRoom
+		// return nil, ErrorClientHasRoom
+		source.CurrentRoom.RemoveClient(source)
 	}
 
 	var roomInfo roomCreate

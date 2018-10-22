@@ -149,7 +149,7 @@ func (r *Room) GetFirstClient() (client *Client) {
 func (r *Room) RemoveClient(c *Client) {
 	username := c.User.NameNormal
 
-	delete(r.State.Players, c.User.NameNormal)
+	delete(r.State.Players, username)
 	delete(r.Clients, c)
 
 	if username == r.Owner && r.Permissions.TakeOwnership {
