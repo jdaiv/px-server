@@ -46,7 +46,7 @@ func configureWSRoutes() {
 	wsRouter.AddHandler("chat", "join_room", handleJoinRoom)
 	wsRouter.AddHandler("chat", "create_room", handleCreateRoom)
 	wsRouter.AddHandler("chat", "update_room", handleModifyRoom)
-	wsRouter.AddHandler("chat", "player_move", handlePlayerMove)
+	wsRouter.AddHandler("room", "update", handlePlayerMove)
 
 	wsRouter.AddHandler("activity", "list", handleActivityList)
 	wsRouter.AddDefaultHandler("activity", handleActivityAction)

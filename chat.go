@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+
+	"bitbucket.org/panicexpress/backend/station"
 )
 
 const (
@@ -29,14 +31,17 @@ type (
 )
 
 func handlePlayerMove(source *Client, target string, data []byte) (interface{}, error) {
-	var msg PlayerState
+	if source.CurrentRoom == nil {
+		return nil, ErrorRoomMissing
+	}
+
+	var msg map[string]station.Delta
 
 	if err := parseIncoming(data, &msg); err != nil {
 		return nil, err
 	}
 
-	source.CurrentRoom.State.Players[source.User.NameNormal] = &msg
-	source.CurrentRoom.BroadcastState()
+	source.CurrentRoom.Area.Recv(source.User.NameNormal, msg)
 
 	return nil, nil
 }
@@ -92,9 +97,9 @@ func handleListUsers(source *Client, target string, data []byte) (interface{}, e
 	} else {
 		list = make([]string, len(room.Clients))
 		for c := range room.Clients {
-			if c.Authenticated {
-				list = append(list, c.User.Name)
-			}
+			// if c.Authenticated {
+			list = append(list, c.User.Name)
+			// }
 		}
 	}
 

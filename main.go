@@ -44,7 +44,7 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	r := mux.NewRouter()
-	// r.Use(middleware.RecoveryHandler())
+	r.Use(middleware.RecoveryHandler())
 	r.Use(middleware.CORS())
 	r.HandleFunc("/api/ws", join).Methods("GET")
 	r.HandleFunc("/api/auth", login).Methods("POST")
@@ -60,6 +60,26 @@ func main() {
 	configureRooms()
 	configureWSRoutes()
 	go incomingMessages()
+
+	t := time.Now()
+	go func() {
+		for {
+			_t := time.Now()
+			dt := _t.Sub(t).Seconds()
+			t = _t
+			for _, r := range rooms {
+				if r.Area != nil {
+					r.Area.Tick(dt)
+					r.Area.LateTick(dt)
+					update := r.Area.Send()
+					if update != nil {
+						r.Broadcast("room", "update", update)
+					}
+				}
+			}
+			time.Sleep(30 * time.Millisecond)
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:         config.Addr,

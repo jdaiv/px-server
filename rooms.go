@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"bitbucket.org/panicexpress/backend/station"
 	"github.com/google/uuid"
 )
 
@@ -22,27 +23,17 @@ type Room struct {
 	Clients      map[*Client]int
 	ClientsEnd   int
 	Owner        string
-	State        *RoomState
+	Area         *station.Area
 	Activity     Activity
 }
 
 type RoomPublicData struct {
-	Owner         string      `json:"owner"`
-	Name          string      `json:"name"`
-	FriendlyName  string      `json:"friendly_name"`
-	State         *RoomState  `json:"state"`
-	Activity      string      `json:"activity"`
-	ActivityState interface{} `json:"activity_state"`
-}
-
-type RoomState struct {
-	Players map[string]*PlayerState `json:"players"`
-}
-
-type PlayerState struct {
-	X float32 `json:"x"`
-	Y float32 `json:"y"`
-	Z float32 `json:"z"`
+	Owner         string        `json:"owner"`
+	Name          string        `json:"name"`
+	FriendlyName  string        `json:"friendly_name"`
+	Area          *station.Area `json:"state"`
+	Activity      string        `json:"activity"`
+	ActivityState interface{}   `json:"activity_state"`
 }
 
 var Station *Room
@@ -62,7 +53,7 @@ func NewRoom(name string) (*Room, error) {
 		FriendlyName: name,
 		Clients:      make(map[*Client]int, 0),
 		ClientsEnd:   1,
-		State:        &RoomState{make(map[string]*PlayerState)},
+		Area:         station.NewArea(),
 	}
 	rooms[name] = r
 	return r, nil
@@ -124,7 +115,7 @@ func (r *Room) AddClient(c *Client) error {
 	// if !c.Authenticated {
 	// 	return ErrorUnauthenticated
 	// }
-	r.State.Players[c.User.NameNormal] = new(PlayerState)
+	r.Area.Handle(c.User.NameNormal, "create", "player", []float64{0, 0, 0, 0})
 	r.Clients[c] = len(r.Clients)
 	r.ClientsEnd++
 	if r.Owner == "" && c.Authenticated && r.Permissions.TakeOwnership {
@@ -149,7 +140,8 @@ func (r *Room) GetFirstClient() (client *Client) {
 func (r *Room) RemoveClient(c *Client) {
 	username := c.User.NameNormal
 
-	delete(r.State.Players, username)
+	// delete(r.State.Players, username)
+	r.Area.Handle(c.User.NameNormal, "remove", "player", []float64{})
 	delete(r.Clients, c)
 
 	if username == r.Owner && r.Permissions.TakeOwnership {
@@ -181,7 +173,7 @@ func (r *Room) GetPublicData() RoomPublicData {
 		Owner:        r.Owner,
 		Name:         r.Name,
 		FriendlyName: r.FriendlyName,
-		State:        r.State,
+		Area:         r.Area,
 	}
 	if r.Activity != nil {
 		data.Activity = r.Activity.Name()
