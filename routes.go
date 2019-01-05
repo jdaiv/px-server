@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 )
 
@@ -53,6 +51,36 @@ func join(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+
+	password := r.FormValue("password")
+
+	if len(password) > 0 {
+		if err := ValidatePassword(password); err != nil {
+			if cErr, ok := err.(ClientError); ok {
+				jsonErr(w, "auth", "login", cErr)
+			} else {
+				log.Printf("[api/auth] error validating password: %v", err)
+				jsonErr(w, "auth", "login", ErrorInternal)
+			}
+			return
+		}
+
+		user, err := AuthenticateUser(password)
+		if err != nil {
+			jsonErr(w, "auth", "login", ErrorInvalidLogin)
+			return
+		}
+
+		jsonWrite(w, WSResponse{
+			Error:   0,
+			Message: "success",
+			Action:  WSAction{"auth", "valid", ""},
+			Data:    true,
+		})
+
+		log.Printf("[api/auth] user logged in %s", user.NameNormal)
+	}
+
 	username := r.FormValue("username")
 
 	if err := ValidateUsername(username); err != nil {
@@ -65,60 +93,20 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	password := r.FormValue("password")
-
-	if err := ValidatePassword(password); err != nil {
-		if cErr, ok := err.(ClientError); ok {
-			jsonErr(w, "auth", "login", cErr)
-		} else {
-			log.Printf("[api/auth] error validating password: %v", err)
-			jsonErr(w, "auth", "login", ErrorInternal)
-		}
-		return
-	}
-
-	nName := normalizeUsername(username)
-	user, err := AuthenticateUser(nName, password)
+	user, password, err := CreateUser(username)
 	if err != nil {
-		if err == ErrorUserMissing {
-			user, err = CreateUser(username, password)
-			if err != nil {
-				log.Printf("[api/auth] error authenticating user: %v", err)
-				jsonErr(w, "auth", "login", ErrorInternal)
-				return
-			}
-		} else if err == ErrorInvalidLogin {
-			jsonErr(w, "auth", "login", ErrorInvalidLogin)
-			return
-		} else {
-			log.Printf("[api/auth] error authenticating user: %v", err)
-			jsonErr(w, "auth", "login", ErrorInternal)
-			return
-		}
-	}
-
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = user.NameNormal
-	claims["full_name"] = user.Name
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	t, err := token.SignedString(JWTSecret)
-	if err != nil {
-		log.Printf("[api/auth] error authenticating user: %v", err)
 		jsonErr(w, "auth", "login", ErrorInternal)
 		return
 	}
 
-	log.Printf("[api/auth] %s logged in", user.NameNormal)
-
 	jsonWrite(w, WSResponse{
 		Error:   0,
 		Message: "success",
-		Action:  WSAction{"auth", "login", "all"},
-		Data:    t,
+		Action:  WSAction{"auth", "create", ""},
+		Data:    password,
 	})
+
+	log.Printf("[api/auth] created user %s", user.NameNormal)
 }
 
 func jsonWrite(w http.ResponseWriter, v interface{}) {

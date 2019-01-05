@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.3.0
 	github.com/lib/pq v1.0.0
-	golang.org/x/crypto v0.0.0-20180910181607-0e37d006457b
+	github.com/sethvargo/go-password v0.1.2
+	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
 	golang.org/x/text v0.3.0
 )

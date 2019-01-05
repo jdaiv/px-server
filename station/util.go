@@ -58,3 +58,8 @@ func (a AABB) Intersects(b AABB) bool {
 		(a.Min.Y <= b.Max.Y && a.Max.Y >= b.Min.Y) &&
 		(a.Min.Z <= b.Max.Z && a.Max.Z >= b.Min.Z)
 }
+
+func (a AABB) Intersects2D(b AABB) bool {
+	return (a.Min.X <= b.Max.X && a.Max.X >= b.Min.X) &&
+		(a.Min.Y <= b.Max.Y && a.Max.Y >= b.Min.Y)
+}

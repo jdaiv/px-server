@@ -1,13 +1,12 @@
 package main
 
 import (
-	"crypto/sha512"
 	"database/sql"
 	"log"
 	"strings"
 	"unicode"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/sethvargo/go-password/password"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -21,24 +20,16 @@ const (
 type User struct {
 	Name       string
 	NameNormal string
-	Email      string
 	Data       UserData
 }
 
 type UserData struct {
 }
 
-func preparePassword(password string) []byte {
-	hashed := sha512.Sum512([]byte(password))
-	return hashed[:]
-}
-
-func hashPassword(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword(preparePassword(password), 10)
-}
-
-func comparePassword(password string, hash []byte) error {
-	return bcrypt.CompareHashAndPassword(hash, preparePassword(password))
+func createPassword() []byte {
+	// todo: handle error
+	p, _ := password.Generate(60, 12, 12, true, true)
+	return []byte(p)
 }
 
 func normalizeUsername(username string) string {
@@ -72,51 +63,34 @@ func ValidateUsername(username string) error {
 	return nil
 }
 
-func CreateUser(username, password string) (User, error) {
+func CreateUser(username string) (User, string, error) {
 	user := User{NameNormal: normalizeUsername(username)}
+	password := createPassword()
 	var id int
 
-	hashedPassword, err := hashPassword(password)
-	if err != nil {
-		return user, err
-	}
-
-	err = DB.QueryRow(`INSERT INTO players(name, name_normal, password) VALUES ($1, $2, $3)
-        RETURNING id`, username, user.NameNormal, hashedPassword).Scan(&id)
+	err := DB.QueryRow(`INSERT INTO players(name, name_normal, password) VALUES ($1, $2, $3)
+        RETURNING id`, username, user.NameNormal, password).Scan(&id)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
-		return user, err
+		return user, "", err
 	}
 
 	log.Printf("User created, ID: %d", id)
 	user.Name = username
-	return user, nil
+	return user, string(password), nil
 }
 
-func AuthenticateUser(normalizedUsername, password string) (User, error) {
-	user := User{NameNormal: normalizedUsername}
-	var passwordHash []byte
-	var email sql.NullString
+func AuthenticateUser(password string) (User, error) {
+	user := User{}
 
-	err := DB.QueryRow(`SELECT name, password, email FROM players
-        WHERE name_normal = $1`, normalizedUsername).Scan(&user.Name, &passwordHash, &email)
+	err := DB.QueryRow(`SELECT name, name_normal FROM players
+        WHERE password = $1`, password).Scan(&user.Name, &user.NameNormal)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
-			return user, ErrorUserMissing
+			return user, ErrorInvalidLogin
 		}
 		return user, err
-	}
-	if email.Valid {
-		user.Email = email.String
-	} else {
-		user.Email = ""
-	}
-
-	err = comparePassword(password, passwordHash)
-	if err != nil {
-		log.Printf("Password Error: %v", err)
-		return user, ErrorInvalidLogin
 	}
 
 	return user, nil
@@ -124,21 +98,15 @@ func AuthenticateUser(normalizedUsername, password string) (User, error) {
 
 func LoadUser(username string) (User, error) {
 	user := User{NameNormal: username}
-	var email sql.NullString
 
-	err := DB.QueryRow(`SELECT name, email FROM players
-        WHERE name_normal = $1`, username).Scan(&user.Name, &email)
+	err := DB.QueryRow(`SELECT name FROM players
+        WHERE name_normal = $1`, username).Scan(&user.Name)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
 			return user, ErrorUserMissing
 		}
 		return user, err
-	}
-	if email.Valid {
-		user.Email = email.String
-	} else {
-		user.Email = ""
 	}
 
 	return user, nil

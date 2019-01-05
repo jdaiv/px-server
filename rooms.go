@@ -9,26 +9,17 @@ import (
 
 var rooms = make(map[string]*Room)
 
-type Permissions struct {
-	Read          bool
-	Write         bool
-	TakeOwnership bool
-}
-
 // TODO: convert to interface?
 type Room struct {
-	Permissions  *Permissions
 	Name         string
 	FriendlyName string
 	Clients      map[*Client]int
 	ClientsEnd   int
 	Owner        string
 	Area         *station.Area
-	Activity     Activity
 }
 
 type RoomPublicData struct {
-	Owner         string        `json:"owner"`
 	Name          string        `json:"name"`
 	FriendlyName  string        `json:"friendly_name"`
 	Area          *station.Area `json:"state"`
@@ -36,11 +27,10 @@ type RoomPublicData struct {
 	ActivityState interface{}   `json:"activity_state"`
 }
 
-var Station *Room
+var Public *Room
 
 func configureRooms() {
-	Station, _ = NewRoom("station")
-	Station.Permissions.TakeOwnership = false
+	Public, _ = NewRoom("public")
 }
 
 func NewRoom(name string) (*Room, error) {
@@ -48,11 +38,9 @@ func NewRoom(name string) (*Room, error) {
 		return nil, ErrorRoomExists
 	}
 	r := &Room{
-		Permissions:  &Permissions{true, true, true},
 		Name:         name,
 		FriendlyName: name,
 		Clients:      make(map[*Client]int, 0),
-		ClientsEnd:   1,
 		Area:         station.NewArea(),
 	}
 	rooms[name] = r
@@ -96,7 +84,7 @@ func RemoveClientFromAllRooms(c *Client) {
 	}
 }
 
-func (r *Room) AssignOwnership(c *Client) {
+/* func (r *Room) AssignOwnership(c *Client) {
 	if c == nil {
 		r.Owner = ""
 		log.Printf("[chat/%s] cleared ownership", r.Name)
@@ -109,7 +97,7 @@ func (r *Room) AssignOwnership(c *Client) {
 	r.Owner = c.User.NameNormal
 	log.Printf("[chat/%s] assigned new owner: %s", r.Name, r.Owner)
 	r.BroadcastState()
-}
+} */
 
 func (r *Room) AddClient(c *Client) error {
 	// if !c.Authenticated {
@@ -118,9 +106,6 @@ func (r *Room) AddClient(c *Client) error {
 	r.Area.Handle(c.User.NameNormal, "create", "player", []float64{0, 0, 0, 0})
 	r.Clients[c] = len(r.Clients)
 	r.ClientsEnd++
-	if r.Owner == "" && c.Authenticated && r.Permissions.TakeOwnership {
-		r.AssignOwnership(c)
-	}
 	return nil
 }
 
@@ -129,7 +114,7 @@ func (r *Room) GetFirstClient() (client *Client) {
 	// this might be quicker as a standard loop from 0 -> r.ClientsEnd
 	// but I think this might handle a very sparse list better
 	for c, i := range r.Clients {
-		if i < lowest && c.Authenticated {
+		if i < lowest && c.State == AUTHENTICATED {
 			client = c
 			lowest = i
 		}
@@ -138,15 +123,8 @@ func (r *Room) GetFirstClient() (client *Client) {
 }
 
 func (r *Room) RemoveClient(c *Client) {
-	username := c.User.NameNormal
-
-	// delete(r.State.Players, username)
 	r.Area.Handle(c.User.NameNormal, "remove", "player", []float64{})
 	delete(r.Clients, c)
-
-	if username == r.Owner && r.Permissions.TakeOwnership {
-		r.AssignOwnership(r.GetFirstClient())
-	}
 }
 
 func (r *Room) Broadcast(scope, action string, data interface{}) {
@@ -170,14 +148,9 @@ func (r *Room) Broadcast(scope, action string, data interface{}) {
 
 func (r *Room) GetPublicData() RoomPublicData {
 	data := RoomPublicData{
-		Owner:        r.Owner,
 		Name:         r.Name,
 		FriendlyName: r.FriendlyName,
 		Area:         r.Area,
-	}
-	if r.Activity != nil {
-		data.Activity = r.Activity.Name()
-		data.ActivityState = r.Activity.PublicState()
 	}
 	return data
 }

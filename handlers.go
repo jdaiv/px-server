@@ -38,18 +38,13 @@ func configureWSRoutes() {
 	wsRouter.AddHandler("global", "ping", pingHandler)
 
 	wsRouter.AddHandler("auth", "login", loginHandler)
-	wsRouter.AddHandler("auth", "logout", logoutHandler)
+	// wsRouter.AddHandler("auth", "logout", logoutHandler)
 
 	wsRouter.AddHandler("chat", "message", handleChatMessage)
 	wsRouter.AddHandler("chat", "list_rooms", handleListRooms)
 	wsRouter.AddHandler("chat", "list_users", handleListUsers)
 	wsRouter.AddHandler("chat", "join_room", handleJoinRoom)
-	wsRouter.AddHandler("chat", "create_room", handleCreateRoom)
-	wsRouter.AddHandler("chat", "update_room", handleModifyRoom)
 	wsRouter.AddHandler("room", "update", handlePlayerMove)
-
-	wsRouter.AddHandler("activity", "list", handleActivityList)
-	wsRouter.AddDefaultHandler("activity", handleActivityAction)
 }
 
 func parseIncoming(data []byte, v interface{}) error {

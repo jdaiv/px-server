@@ -47,7 +47,7 @@ func handlePlayerMove(source *Client, target string, data []byte) (interface{}, 
 }
 
 func handleChatMessage(source *Client, target string, data []byte) (interface{}, error) {
-	if !source.Authenticated {
+	if source.State != AUTHENTICATED {
 		return nil, ErrorUnauthenticated
 	}
 
@@ -107,7 +107,7 @@ func handleListUsers(source *Client, target string, data []byte) (interface{}, e
 }
 
 func handleListRooms(source *Client, target string, data []byte) (interface{}, error) {
-	if !source.Authenticated {
+	if source.State != AUTHENTICATED {
 		return nil, ErrorUnauthenticated
 	}
 
@@ -121,9 +121,9 @@ func handleListRooms(source *Client, target string, data []byte) (interface{}, e
 }
 
 func handleJoinRoom(source *Client, target string, data []byte) (interface{}, error) {
-	// if !source.Authenticated {
-	// 	return nil, ErrorUnauthenticated
-	// }
+	if source.State != AUTHENTICATED {
+		return nil, ErrorUnauthenticated
+	}
 
 	if source.CurrentRoom != nil {
 		// return nil, ErrorClientHasRoom
@@ -142,7 +142,7 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 
 	log.Printf("[chat/%s] %s joined", target, source.User.NameNormal)
 
-	if source.Authenticated {
+	if source.State == AUTHENTICATED {
 		BroadcastToRoom(target, "chat", "new_message", messageSend{
 			Content: fmt.Sprintf("%s joined", source.User.Name),
 			From:    "server",
@@ -157,111 +157,4 @@ func handleJoinRoom(source *Client, target string, data []byte) (interface{}, er
 	source.CurrentRoom = room
 
 	return room.GetPublicData(), nil
-}
-
-func handleCreateRoom(source *Client, target string, data []byte) (interface{}, error) {
-	if !source.Authenticated {
-		return nil, ErrorUnauthenticated
-	}
-
-	if source.CurrentRoom != nil {
-		// return nil, ErrorClientHasRoom
-		source.CurrentRoom.RemoveClient(source)
-	}
-
-	var roomInfo roomCreate
-
-	if err := parseIncoming(data, &roomInfo); err != nil {
-		return nil, err
-	}
-
-	if len(roomInfo.Name) < 2 || len(roomInfo.Name) > 255 {
-		return nil, ErrorInvalidData
-	}
-
-	room, err := NewRoomRandom()
-	if err != nil {
-		return nil, err
-	}
-	room.FriendlyName = roomInfo.Name
-	room.AssignOwnership(source)
-	source.CurrentRoom = room
-	log.Printf("[chat/%s] %s created with name %s", room.Name, source.User.Name, roomInfo.Name)
-	return WSResponse{
-		Error:   0,
-		Message: "success",
-		Action:  WSAction{"chat", "join_room", room.Name},
-		Data:    room.GetPublicData(),
-	}, room.AddClient(source)
-}
-
-func handleModifyRoom(source *Client, target string, data []byte) (interface{}, error) {
-	if !source.Authenticated {
-		return nil, ErrorUnauthenticated
-	}
-
-	room, exists := rooms[target]
-	if !exists {
-		return nil, ErrorRoomMissing
-	}
-
-	if source.CurrentRoom != room {
-		return nil, ErrorWrongRoom
-	}
-
-	if room.Owner != source.User.NameNormal {
-		return nil, ErrorNotOwner
-	}
-
-	var _data roomCreate
-
-	if err := parseIncoming(data, &_data); err != nil {
-		return nil, err
-	}
-
-	if len(_data.Name) < 2 || len(_data.Name) > 255 {
-		return nil, ErrorInvalidData
-	}
-
-	if len(_data.Activity) > 0 && (len(_data.Activity) < 2 || len(_data.Activity) > 255) {
-		return nil, ErrorInvalidData
-	}
-
-	if len(_data.Activity) > 0 {
-		if room.Activity == nil || (room.Activity != nil && _data.Activity != room.Activity.Name()) {
-			act, err := MakeActivity(_data.Activity, source, room)
-			if err != nil {
-				return nil, err
-			}
-			room.Activity = act
-			log.Printf("[chat/%s] %s changed activity to %s", room.Name, source.User.Name, act.Name())
-			room.Broadcast("chat", "new_message", messageSend{
-				Content: fmt.Sprintf("changed activity to %s", act.Name()),
-				From:    "server",
-				Class:   MESSAGE_CLASS_SERVER,
-			})
-		}
-	} else {
-		room.Activity = nil
-		log.Printf("[chat/%s] %s cleared activity", room.Name, source.User.Name)
-		room.Broadcast("chat", "new_message", messageSend{
-			Content: "stopped the current activity",
-			From:    "server",
-			Class:   MESSAGE_CLASS_SERVER,
-		})
-	}
-
-	if room.FriendlyName != _data.Name {
-		room.FriendlyName = _data.Name
-		log.Printf("[chat/%s] %s changed name of room to %s", room.Name, source.User.Name, _data.Name)
-		room.Broadcast("chat", "new_message", messageSend{
-			Content: fmt.Sprintf("changed room name to %s", _data.Name),
-			From:    "server",
-			Class:   MESSAGE_CLASS_SERVER,
-		})
-	}
-
-	room.BroadcastState()
-
-	return nil, nil
 }

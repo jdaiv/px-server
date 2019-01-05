@@ -25,7 +25,3 @@ func loginHandler(source *Client, target string, data []byte) (interface{}, erro
 		Data:   map[string]string{"name": source.User.Name},
 	}, nil
 }
-
-func logoutHandler(source *Client, target string, data []byte) (interface{}, error) {
-	return true, source.Logout()
-}

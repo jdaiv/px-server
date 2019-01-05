@@ -2,12 +2,6 @@ package station
 
 import "math/rand"
 
-type Transform struct {
-	Position Vector3 `json:"position"`
-	Rotation Vector3 `json:"rotation"`
-	Scale    Vector3 `json:"scale"`
-}
-
 type entity struct {
 	Parent    *Area     `json:"-"`
 	Owner     string    `json:"-"`
