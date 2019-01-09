@@ -13,14 +13,13 @@ import (
 const (
 	USERNAME_MIN_LENGTH = 1
 	USERNAME_MAX_LENGTH = 32
-	PASSWORD_MIN_LENGTH = 8
-	PASSWORD_MAX_LENGTH = 256
+	PASSWORD_LENGTH     = 60
 )
 
 type User struct {
-	Name       string
-	NameNormal string
-	Data       UserData
+	Name       string   `json:"name"`
+	NameNormal string   `json:"nameNormal"`
+	Data       UserData `json:"userData"`
 }
 
 type UserData struct {
@@ -28,7 +27,7 @@ type UserData struct {
 
 func createPassword() []byte {
 	// todo: handle error
-	p, _ := password.Generate(60, 12, 12, true, true)
+	p, _ := password.Generate(PASSWORD_LENGTH, 12, 12, true, true)
 	return []byte(p)
 }
 
@@ -38,11 +37,8 @@ func normalizeUsername(username string) string {
 
 func ValidatePassword(password string) error {
 	length := len([]rune(password))
-	if length < PASSWORD_MIN_LENGTH {
+	if length != PASSWORD_LENGTH {
 		return ErrorPasswordTooShort
-	}
-	if length > PASSWORD_MAX_LENGTH {
-		return ErrorPasswordTooLong
 	}
 	return nil
 }

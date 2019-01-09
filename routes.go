@@ -50,37 +50,7 @@ func join(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
-
-	password := r.FormValue("password")
-
-	if len(password) > 0 {
-		if err := ValidatePassword(password); err != nil {
-			if cErr, ok := err.(ClientError); ok {
-				jsonErr(w, "auth", "login", cErr)
-			} else {
-				log.Printf("[api/auth] error validating password: %v", err)
-				jsonErr(w, "auth", "login", ErrorInternal)
-			}
-			return
-		}
-
-		user, err := AuthenticateUser(password)
-		if err != nil {
-			jsonErr(w, "auth", "login", ErrorInvalidLogin)
-			return
-		}
-
-		jsonWrite(w, WSResponse{
-			Error:   0,
-			Message: "success",
-			Action:  WSAction{"auth", "valid", ""},
-			Data:    true,
-		})
-
-		log.Printf("[api/auth] user logged in %s", user.NameNormal)
-	}
-
+func createUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 
 	if err := ValidateUsername(username); err != nil {
@@ -107,6 +77,35 @@ func login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	log.Printf("[api/auth] created user %s", user.NameNormal)
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	password := r.FormValue("password")
+
+	if err := ValidatePassword(password); err != nil {
+		if cErr, ok := err.(ClientError); ok {
+			jsonErr(w, "auth", "login", cErr)
+		} else {
+			log.Printf("[api/auth] error validating password: %v", err)
+			jsonErr(w, "auth", "login", ErrorInternal)
+		}
+		return
+	}
+
+	user, err := AuthenticateUser(password)
+	if err != nil {
+		jsonErr(w, "auth", "login", ErrorInvalidLogin)
+		return
+	}
+
+	jsonWrite(w, WSResponse{
+		Error:   0,
+		Message: "success",
+		Action:  WSAction{"auth", "login", ""},
+		Data:    user,
+	})
+
+	log.Printf("[api/auth] user logged in %s", user.NameNormal)
 }
 
 func jsonWrite(w http.ResponseWriter, v interface{}) {

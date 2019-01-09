@@ -47,7 +47,8 @@ func main() {
 	r.Use(middleware.RecoveryHandler())
 	r.Use(middleware.CORS())
 	r.HandleFunc("/api/ws", join).Methods("GET")
-	r.HandleFunc("/api/auth", login).Methods("POST")
+	r.HandleFunc("/api/auth/login", login).Methods("POST")
+	r.HandleFunc("/api/auth/create", createUser).Methods("POST")
 
 	var err error
 	DB, err = sql.Open("postgres", config.DBConnStr)
@@ -61,25 +62,25 @@ func main() {
 	configureWSRoutes()
 	go incomingMessages()
 
-	t := time.Now()
-	go func() {
-		for {
-			_t := time.Now()
-			dt := _t.Sub(t).Seconds()
-			t = _t
-			for _, r := range rooms {
-				if r.Area != nil {
-					r.Area.Tick(dt)
-					r.Area.LateTick(dt)
-					update := r.Area.Send()
-					if update != nil {
-						r.Broadcast("room", "update", update)
-					}
-				}
-			}
-			time.Sleep(30 * time.Millisecond)
-		}
-	}()
+	// t := time.Now()
+	// go func() {
+	// 	for {
+	// 		_t := time.Now()
+	// 		dt := _t.Sub(t).Seconds()
+	// 		t = _t
+	// 		for _, r := range rooms {
+	// 			if r.Area != nil {
+	// 				r.Area.Tick(dt)
+	// 				r.Area.LateTick(dt)
+	// 				update := r.Area.Send()
+	// 				if update != nil {
+	// 					r.Broadcast("room", "update", update)
+	// 				}
+	// 			}
+	// 		}
+	// 		time.Sleep(30 * time.Millisecond)
+	// 	}
+	// }()
 
 	srv := &http.Server{
 		Addr:         config.Addr,
