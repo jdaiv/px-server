@@ -1,10 +1,15 @@
-package station
+package rpg
 
 type Player struct {
+	Id        int
 	Name      string
 	Money     int
 	Slots     PlayerSlots
 	Inventory []*Item
+
+	CurrentZone string
+	X           int
+	Y           int
 }
 
 type PlayerSlots struct {
@@ -22,9 +27,11 @@ type Item struct {
 }
 
 type ItemData struct {
-	Id         string
-	Name       string
-	MaxQty     int
-	Equippable bool
-	Durablity  int
+	Id          string
+	Name        string
+	Type        string
+	MaxQty      int
+	Durablity   int
+	Stats       map[string]float32
+	SpecialAttr string
 }

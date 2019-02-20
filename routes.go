@@ -41,8 +41,7 @@ func join(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// log.Printf("[ws_recv] %s/%s", wsMsg.Scope, wsMsg.Action)
-		if wsMsg.Action.Scope == "conn" &&
-			wsMsg.Action.Type == "close" {
+		if wsMsg.Action == ACTION_CLOSE {
 			log.Printf("[ws/recv] %s closed connection", ws.RemoteAddr())
 			return
 		}
@@ -55,24 +54,24 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := ValidateUsername(username); err != nil {
 		if cErr, ok := err.(ClientError); ok {
-			jsonErr(w, "auth", "login", cErr)
+			jsonErr(w, ACTION_CREATE_USER, cErr)
 		} else {
 			log.Printf("[api/auth] error validating username: %v", err)
-			jsonErr(w, "auth", "login", ErrorInternal)
+			jsonErr(w, ACTION_CREATE_USER, ErrorInternal)
 		}
 		return
 	}
 
 	user, password, err := CreateUser(username)
 	if err != nil {
-		jsonErr(w, "auth", "login", ErrorInternal)
+		jsonErr(w, ACTION_CREATE_USER, ErrorInternal)
 		return
 	}
 
 	jsonWrite(w, WSResponse{
 		Error:   0,
 		Message: "success",
-		Action:  WSAction{"auth", "create", ""},
+		Action:  ACTION_CREATE_USER,
 		Data:    password,
 	})
 
@@ -84,24 +83,24 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	if err := ValidatePassword(password); err != nil {
 		if cErr, ok := err.(ClientError); ok {
-			jsonErr(w, "auth", "login", cErr)
+			jsonErr(w, ACTION_LOGIN, cErr)
 		} else {
 			log.Printf("[api/auth] error validating password: %v", err)
-			jsonErr(w, "auth", "login", ErrorInternal)
+			jsonErr(w, ACTION_LOGIN, ErrorInternal)
 		}
 		return
 	}
 
 	user, err := AuthenticateUser(password)
 	if err != nil {
-		jsonErr(w, "auth", "login", ErrorInvalidLogin)
+		jsonErr(w, ACTION_LOGIN, ErrorInvalidLogin)
 		return
 	}
 
 	jsonWrite(w, WSResponse{
 		Error:   0,
 		Message: "success",
-		Action:  WSAction{"auth", "login", ""},
+		Action:  ACTION_LOGIN,
 		Data:    user,
 	})
 
@@ -116,10 +115,10 @@ func jsonWrite(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-func jsonErr(w http.ResponseWriter, scope, action string, err ClientError) {
+func jsonErr(w http.ResponseWriter, action ActionStr, err ClientError) {
 	jsonWrite(w, WSResponse{
 		Error:   err.Code(),
 		Message: err.ExternalMessage(),
-		Action:  WSAction{scope, action, "all"},
+		Action:  action,
 	})
 }

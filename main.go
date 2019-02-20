@@ -58,9 +58,8 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
-	configureRooms()
-	configureWSRoutes()
 	go incomingMessages()
+	go outgoingMessages()
 
 	// t := time.Now()
 	// go func() {

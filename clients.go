@@ -13,15 +13,13 @@ const (
 )
 
 type Client struct {
-	State       int
-	SuperUser   bool
-	User        User
-	Conn        *websocket.Conn
-	CurrentRoom *Room
+	State int
+	User  User
+	Conn  *websocket.Conn
 }
 
 var clients = make(map[*Client]bool)
-var authenticatedClients = make(map[string]*Client)
+var authenticatedClients = make(map[int]*Client)
 
 func MakeClient(conn *websocket.Conn) *Client {
 	client := &Client{
@@ -33,12 +31,12 @@ func MakeClient(conn *websocket.Conn) *Client {
 }
 
 func RemoveClient(client *Client) {
-	RemoveClientFromAllRooms(client)
+	// RemoveClientFromAllRooms(client)
 	// this is before broadcasting a user left so we don't enter an infinite loop
 	delete(clients, client)
 	if client.State == AUTHENTICATED {
-		delete(authenticatedClients, client.User.NameNormal)
-		BroadcastToAll("public", "chat", "new_message", messageSend{
+		delete(authenticatedClients, client.User.Id)
+		BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
 			Content: fmt.Sprintf("%s left", client.User.Name),
 			From:    "server",
 			Class:   MESSAGE_CLASS_SERVER,
@@ -46,11 +44,11 @@ func RemoveClient(client *Client) {
 	}
 }
 
-func BroadcastToAll(name, scope, action string, data interface{}) error {
+func BroadcastToAll(action ActionStr, data interface{}) error {
 	for c := range clients {
 		err := c.Conn.WriteJSON(WSResponse{
 			Error:  0,
-			Action: WSAction{scope, action, name},
+			Action: action,
 			Data:   data,
 		})
 		if err != nil {
@@ -58,6 +56,10 @@ func BroadcastToAll(name, scope, action string, data interface{}) error {
 		}
 	}
 	return nil
+}
+
+func (c *Client) Write(data interface{}) {
+	outgoing <- outgoingMessage{Data: data, Dest: c}
 }
 
 func (c *Client) Authenticate(password string) error {
@@ -73,16 +75,12 @@ func (c *Client) Authenticate(password string) error {
 		return err
 	}
 
-	if c.CurrentRoom != nil {
-		c.CurrentRoom.RemoveClient(c)
-	}
-
 	c.User = user
 	c.State = AUTHENTICATED
 
-	authenticatedClients[user.NameNormal] = c
+	authenticatedClients[user.Id] = c
 
-	BroadcastToAll("public", "chat", "new_message", messageSend{
+	BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
 		Content: fmt.Sprintf("%s logged in", c.User.Name),
 		From:    "server",
 		Class:   MESSAGE_CLASS_SERVER,

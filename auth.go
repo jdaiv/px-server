@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-func loginHandler(source *Client, target string, data []byte) (interface{}, error) {
+func loginHandler(source *Client, data []byte) (interface{}, error) {
 	var tokenStr string
 
 	err := parseIncoming(data, &tokenStr)
@@ -21,7 +21,7 @@ func loginHandler(source *Client, target string, data []byte) (interface{}, erro
 
 	return WSResponse{
 		Error:  0,
-		Action: WSAction{"auth", "login", "all"},
+		Action: ACTION_LOGIN,
 		Data:   map[string]string{"name": source.User.Name},
 	}, nil
 }

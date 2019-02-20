@@ -17,6 +17,7 @@ const (
 )
 
 type User struct {
+	Id         int      `json:"-"`
 	Name       string   `json:"name"`
 	NameNormal string   `json:"nameNormal"`
 	Data       UserData `json:"userData"`
@@ -79,8 +80,8 @@ func CreateUser(username string) (User, string, error) {
 func AuthenticateUser(password string) (User, error) {
 	user := User{}
 
-	err := DB.QueryRow(`SELECT name, name_normal FROM players
-        WHERE password = $1`, password).Scan(&user.Name, &user.NameNormal)
+	err := DB.QueryRow(`SELECT id, name, name_normal FROM players
+        WHERE password = $1`, password).Scan(&user.Id, &user.Name, &user.NameNormal)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
@@ -95,8 +96,8 @@ func AuthenticateUser(password string) (User, error) {
 func LoadUser(username string) (User, error) {
 	user := User{NameNormal: username}
 
-	err := DB.QueryRow(`SELECT name FROM players
-        WHERE name_normal = $1`, username).Scan(&user.Name)
+	err := DB.QueryRow(`SELECT id, name FROM players
+        WHERE name_normal = $1`, username).Scan(&user.Id, &user.Name)
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
