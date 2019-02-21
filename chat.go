@@ -55,21 +55,13 @@ func handleChatMessage(source *Client, data []byte) (interface{}, error) {
 	return nil, err
 }
 
-// func handleListUsers(source *Client, target string, data []byte) (interface{}, error) {
-// 	var list []string
-// 	var err error
+func handleListUsers(source *Client, data []byte) (interface{}, error) {
+	list := make([]string, 0)
+	for _, c := range authenticatedClients {
+		if c.State == AUTHENTICATED {
+			list = append(list, c.User.Name)
+		}
+	}
 
-// 	room, exists := rooms[target]
-// 	if !exists {
-// 		err = ErrorRoomMissing
-// 	} else {
-// 		list = make([]string, len(room.Clients))
-// 		for c := range room.Clients {
-// 			// if c.Authenticated {
-// 			list = append(list, c.User.Name)
-// 			// }
-// 		}
-// 	}
-
-// 	return list, err
-// }
+	return list, nil
+}

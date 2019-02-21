@@ -14,6 +14,7 @@ const (
 	ACTION_LOGIN        = "login"
 	ACTION_CREATE_USER  = "create_user"
 	ACTION_CHAT_MESSAGE = "chat_message"
+	ACTION_LIST_USERS   = "list_users"
 )
 
 type WSMessage struct {
@@ -42,6 +43,7 @@ var wsRouter = map[ActionStr]WSHandler{
 	ACTION_LOGIN: loginHandler,
 	// "logout":       logoutHandler,
 	ACTION_CHAT_MESSAGE: handleChatMessage,
+	ACTION_LIST_USERS:   handleListUsers,
 }
 
 func parseIncoming(data []byte, v interface{}) error {
