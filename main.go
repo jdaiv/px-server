@@ -11,6 +11,8 @@ import (
 	"os/signal"
 	"time"
 
+	"bitbucket.org/panicexpress/backend/rpg"
+
 	"github.com/BurntSushi/toml"
 	middleware "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -29,6 +31,8 @@ type Config struct {
 }
 
 var configLocation = flag.String("config", "config.toml", "location of config file")
+
+var game *rpg.RPG
 
 func main() {
 	flag.Parse()
@@ -58,29 +62,24 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
+	game = rpg.NewRPG(DB)
+	game.Zones["start"] = rpg.NewZone(25, 25)
+	log.Println("[server] made game")
+
 	go ClientMaintenace()
 	go incomingMessages()
 	go outgoingMessages()
 
-	// t := time.Now()
-	// go func() {
-	// 	for {
-	// 		_t := time.Now()
-	// 		dt := _t.Sub(t).Seconds()
-	// 		t = _t
-	// 		for _, r := range rooms {
-	// 			if r.Area != nil {
-	// 				r.Area.Tick(dt)
-	// 				r.Area.LateTick(dt)
-	// 				update := r.Area.Send()
-	// 				if update != nil {
-	// 					r.Broadcast("room", "update", update)
-	// 				}
-	// 			}
-	// 		}
-	// 		time.Sleep(30 * time.Millisecond)
-	// 	}
-	// }()
+	t := time.Now()
+	go func() {
+		for {
+			_t := time.Now()
+			dt := _t.Sub(t).Seconds()
+			t = _t
+			game.Tick(dt)
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:         config.Addr,

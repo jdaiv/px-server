@@ -18,3 +18,7 @@ func NewRPG(db *sql.DB) *RPG {
 		DB:       db,
 	}
 }
+
+func (g *RPG) Tick(dt float64) {
+
+}
