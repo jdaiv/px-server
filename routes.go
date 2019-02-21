@@ -25,6 +25,7 @@ func join(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("bad things"))
 		return
 	}
+
 	defer ws.Close()
 
 	client := MakeClient(ws)
@@ -43,6 +44,9 @@ func join(w http.ResponseWriter, r *http.Request) {
 		// log.Printf("[ws_recv] %s/%s", wsMsg.Scope, wsMsg.Action)
 		if wsMsg.Action == ACTION_CLOSE {
 			log.Printf("[ws/recv] %s closed connection", ws.RemoteAddr())
+			return
+		}
+		if client.State >= CLOSING {
 			return
 		}
 		incoming <- incomingAction{Msg: wsMsg, Source: client}

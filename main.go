@@ -58,6 +58,7 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
+	go ClientMaintenace()
 	go incomingMessages()
 	go outgoingMessages()
 

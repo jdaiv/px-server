@@ -2,60 +2,115 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
 	AWAITING_AUTH = iota
-	AUTHENTICATED
+	READY
 	CLOSING
+	TIMED_OUT
+	CLOSED
 )
 
 type Client struct {
-	State int
-	User  User
-	Conn  *websocket.Conn
+	State         int
+	Authenticated bool
+	User          User
+	Conn          *websocket.Conn
+	LastPing      int64
 }
 
+var clientsMutex = &sync.Mutex{}
 var clients = make(map[*Client]bool)
 var authenticatedClients = make(map[int]*Client)
 
 func MakeClient(conn *websocket.Conn) *Client {
 	client := &Client{
-		Conn:  conn,
-		State: AWAITING_AUTH,
+		Conn:     conn,
+		State:    AWAITING_AUTH,
+		LastPing: time.Now().UnixNano(),
 	}
+	clientsMutex.Lock()
 	clients[client] = true
+	clientsMutex.Unlock()
 	return client
 }
 
 func RemoveClient(client *Client) {
-	// RemoveClientFromAllRooms(client)
-	// this is before broadcasting a user left so we don't enter an infinite loop
-	delete(clients, client)
-	if client.State == AUTHENTICATED {
-		delete(authenticatedClients, client.User.Id)
-		BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
-			Content: fmt.Sprintf("%s left", client.User.Name),
-			From:    "server",
-			Class:   MESSAGE_CLASS_SERVER,
-		})
-	}
+	client.State = CLOSING
 }
 
-func BroadcastToAll(action ActionStr, data interface{}) error {
+func BroadcastToAll(action ActionStr, data interface{}) {
+	clientsMutex.Lock()
 	for c := range clients {
-		err := c.Conn.WriteJSON(WSResponse{
+		c.Write(WSResponse{
 			Error:  0,
 			Action: action,
 			Data:   data,
 		})
-		if err != nil {
-			RemoveClient(c)
-		}
 	}
-	return nil
+	clientsMutex.Unlock()
+}
+
+func BroadcastToAllNoLock(action ActionStr, data interface{}) {
+	for c := range clients {
+		c.Write(WSResponse{
+			Error:  0,
+			Action: action,
+			Data:   data,
+		})
+	}
+}
+
+func ClientMaintenace() {
+	for {
+		clientsMutex.Lock()
+
+		// check if clients have timed out
+		now := time.Now().UnixNano()
+		for c := range clients {
+			if now-c.LastPing > 10*1e+9 {
+				c.State = TIMED_OUT
+			}
+		}
+
+		// find closed or timed out clients
+		toRemove := make([]*Client, 0)
+		for c := range clients {
+			if c.State >= CLOSING {
+				toRemove = append(toRemove, c)
+			}
+		}
+
+		// and remove
+		for _, c := range toRemove {
+			delete(clients, c)
+			if c.Authenticated {
+				delete(authenticatedClients, c.User.Id)
+				message := "%s disconnected"
+				if c.State == TIMED_OUT {
+					message = "%s timed out"
+				}
+				BroadcastToAllNoLock(ACTION_CHAT_MESSAGE, messageSend{
+					Content: fmt.Sprintf(message, c.User.Name),
+					From:    "server",
+					Class:   MESSAGE_CLASS_SERVER,
+				})
+
+				log.Printf("[ws] "+message, c.User.Name)
+			}
+		}
+
+		clientsMutex.Unlock()
+
+		// sleep
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (c *Client) Write(data interface{}) {
@@ -76,7 +131,8 @@ func (c *Client) Authenticate(password string) error {
 	}
 
 	c.User = user
-	c.State = AUTHENTICATED
+	c.Authenticated = true
+	c.State = READY
 
 	authenticatedClients[user.Id] = c
 

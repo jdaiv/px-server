@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 )
 
 type ActionStr string
@@ -76,15 +77,12 @@ func incomingMessages() {
 				cErr = ErrorInternal
 			}
 			log.Printf("[ws/send] error: %v", cErr)
-			jsonErr := in.Source.Conn.WriteJSON(WSResponse{
+			in.Source.Write(WSResponse{
 				Error:   cErr.Code(),
 				Message: cErr.ExternalMessage(),
 				Action:  in.Msg.Action,
 				Data:    nil,
 			})
-			if jsonErr != nil {
-				log.Printf("[server] error sending json payload: %v", err)
-			}
 		}
 
 		if response != nil {
@@ -97,17 +95,18 @@ func incomingMessages() {
 					Data:    response,
 				}
 			}
-			if err := in.Source.Conn.WriteJSON(wsRespsonse); err != nil {
-				log.Printf("[server] error sending json payload: %v", err)
-			}
+			in.Source.Write(wsRespsonse)
 		}
 	}
 }
 
 func pingHandler(source *Client, data []byte) (interface{}, error) {
-	log.Printf("[ws/ping] hello %s", source.Conn.RemoteAddr())
+	// log.Printf("[ws/ping] hello %s", source.Conn.RemoteAddr())
+	now := time.Now().UnixNano()
+	source.LastPing = now
 	return WSResponse{
 		Error:  0,
 		Action: ACTION_PING,
+		Data:   now,
 	}, nil
 }

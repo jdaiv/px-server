@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 type outgoingMessage struct {
 	Data interface{}
 	Dest *Client
@@ -12,7 +14,7 @@ func outgoingMessages() {
 		out := <-outgoing
 		err := out.Dest.Conn.WriteJSON(out.Data)
 		if err != nil {
-
+			log.Fatal(err)
 		}
 	}
 }

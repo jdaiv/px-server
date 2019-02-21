@@ -26,7 +26,7 @@ type (
 )
 
 func handleChatMessage(source *Client, data []byte) (interface{}, error) {
-	if source.State != AUTHENTICATED {
+	if !source.Authenticated {
 		return nil, ErrorUnauthenticated
 	}
 
@@ -40,28 +40,26 @@ func handleChatMessage(source *Client, data []byte) (interface{}, error) {
 		return nil, ErrorInvalidData
 	}
 
-	var err error
-	err = BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
+	BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
 		Content: msg.Content,
 		From:    source.User.Name,
 	})
 
-	if err != nil {
-		log.Printf("[chat] %s failed to send message: %v", source.User.NameNormal, err)
-	} else {
-		log.Printf("[chat] %s: %s", source.User.NameNormal, msg.Content)
-	}
+	log.Printf("[chat] %s: %s", source.User.NameNormal, msg.Content)
 
-	return nil, err
+	return nil, nil
 }
 
 func handleListUsers(source *Client, data []byte) (interface{}, error) {
 	list := make([]string, 0)
+
+	clientsMutex.Lock()
 	for _, c := range authenticatedClients {
-		if c.State == AUTHENTICATED {
+		if c.Authenticated {
 			list = append(list, c.User.Name)
 		}
 	}
+	clientsMutex.Unlock()
 
 	return list, nil
 }
