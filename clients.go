@@ -114,7 +114,9 @@ func ClientMaintenace() {
 }
 
 func (c *Client) Write(data interface{}) {
-	outgoing <- outgoingMessage{Data: data, Dest: c}
+	if c.State < CLOSING {
+		outgoing <- outgoingMessage{Data: data, Dest: c}
+	}
 }
 
 func (c *Client) Authenticate(password string) error {
