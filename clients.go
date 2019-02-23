@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"bitbucket.org/panicexpress/backend/rpg"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -91,6 +93,12 @@ func ClientMaintenace() {
 		for _, c := range toRemove {
 			delete(clients, c)
 			if c.Authenticated {
+				game.Incoming <- rpg.IncomingMessage{
+					PlayerId: c.User.Id,
+					Data: rpg.IncomingMessageData{
+						Type: rpg.ACTION_LEAVE,
+					},
+				}
 				delete(authenticatedClients, c.User.Id)
 				message := "%s disconnected"
 				if c.State == TIMED_OUT {
@@ -137,6 +145,13 @@ func (c *Client) Authenticate(password string) error {
 	c.State = READY
 
 	authenticatedClients[user.Id] = c
+
+	game.Incoming <- rpg.IncomingMessage{
+		PlayerId: user.Id,
+		Data: rpg.IncomingMessageData{
+			Type: rpg.ACTION_JOIN,
+		},
+	}
 
 	BroadcastToAll(ACTION_CHAT_MESSAGE, messageSend{
 		Content: fmt.Sprintf("%s logged in", c.User.Name),

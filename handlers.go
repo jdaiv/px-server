@@ -17,6 +17,7 @@ const (
 	ACTION_CHAT_MESSAGE = "chat_message"
 	ACTION_LIST_USERS   = "list_users"
 	ACTION_GAME_STATE   = "game_state"
+	ACTION_GAME_ACTION  = "game_action"
 )
 
 type WSMessage struct {
@@ -48,7 +49,8 @@ var wsRouter = map[ActionStr]WSHandler{
 	ACTION_CHAT_MESSAGE: handleChatMessage,
 	ACTION_LIST_USERS:   handleListUsers,
 
-	ACTION_GAME_STATE: handleGameState,
+	ACTION_GAME_STATE:  handleGameState,
+	ACTION_GAME_ACTION: handleGameAction,
 }
 
 func parseIncoming(data []byte, v interface{}) error {

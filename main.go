@@ -63,23 +63,39 @@ func main() {
 	log.Println("[server] connected to DB")
 
 	game = rpg.NewRPG(DB)
-	game.Zones["start"] = rpg.NewZone(25, 25)
+	game.Zones["start"] = rpg.NewZone("start", 25, 25)
 	log.Println("[server] made game")
 
 	go ClientMaintenace()
 	go incomingMessages()
 	go outgoingMessages()
+	go game.HandleMessages()
 
-	t := time.Now()
 	go func() {
 		for {
-			_t := time.Now()
-			dt := _t.Sub(t).Seconds()
-			t = _t
-			game.Tick(dt)
-			time.Sleep(500 * time.Millisecond)
+			/* outgoing :=  */ <-game.Outgoing
+			clientsMutex.Lock()
+			for c := range clients {
+				c.Write(WSResponse{
+					Error:  0,
+					Action: ACTION_GAME_STATE,
+					Data:   game.Zones["start"],
+				})
+			}
+			clientsMutex.Unlock()
 		}
 	}()
+
+	// t := time.Now()
+	// go func() {
+	// 	for {
+	// 		_t := time.Now()
+	// 		dt := _t.Sub(t).Seconds()
+	// 		t = _t
+	// 		game.Tick(dt)
+	// 		time.Sleep(500 * time.Millisecond)
+	// 	}
+	// }()
 
 	srv := &http.Server{
 		Addr:         config.Addr,
