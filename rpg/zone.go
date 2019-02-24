@@ -113,6 +113,12 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 		}
 	}
 
+	for _, p := range z.Players {
+		if x == p.X && y == p.Y {
+			return
+		}
+	}
+
 	if x < 0 {
 		x = 0
 	}
