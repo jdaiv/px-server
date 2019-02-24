@@ -1,37 +1,55 @@
 package rpg
 
 type Player struct {
-	Id        int
-	Name      string
-	Money     int
-	Slots     PlayerSlots
-	Inventory []*Item
+	Id        int         `json:"id"`
+	Name      string      `json:"name"`
+	Money     int         `json:"money"`
+	Slots     PlayerSlots `json:"slots"`
+	Inventory []*Item     `json:"inventory"`
 
-	CurrentZone string
-	X           int
-	Y           int
+	CurrentZone string `json:"-"`
+	X           int    `json:"-"`
+	Y           int    `json:"-"`
+
+	DisplayData PlayerDisplayData `json:"-"`
 }
 
 type PlayerSlots struct {
-	Head      *Item
-	Body      *Item
-	Legs      *Item
-	RightHand *Item
-	LeftHand  *Item
+	Head      *Item `json:"head"`
+	Body      *Item `json:"body"`
+	Legs      *Item `json:"legs"`
+	RightHand *Item `json:"rightHand"`
+	LeftHand  *Item `json:"leftHand"`
 }
 
 type Item struct {
-	Data      ItemData
-	Qty       int
-	Durablity int
+	Data       ItemData `json:"data"`
+	Qty        int      `json:"qty"`
+	Durability int      `json:"durability"`
 }
 
 type ItemData struct {
-	Id          string
-	Name        string
-	Type        string
-	MaxQty      int
-	Durablity   int
-	Stats       map[string]float32
-	SpecialAttr string
+	Id          string             `json:"id"`
+	Name        string             `json:"name"`
+	Type        string             `json:"type"`
+	MaxQty      int                `json:"maxQty"`
+	Durability  int                `json:"durability"`
+	Stats       map[string]float32 `json:"stats"`
+	SpecialAttr string             `json:"special"`
+}
+
+type PlayerDisplayData struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+	X    int    `json:"x"`
+	Y    int    `json:"y"`
+}
+
+func (p *Player) UpdateDisplay() {
+	p.DisplayData = PlayerDisplayData{
+		Id:   p.Id,
+		Name: p.Name,
+		X:    p.X,
+		Y:    p.Y,
+	}
 }

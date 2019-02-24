@@ -29,6 +29,11 @@ type IncomingMessageData struct {
 	Params map[string]interface{} `json:"params"`
 }
 
+type DisplayData struct {
+	Zone   ZoneDisplayData `json:"zone"`
+	Player Player          `json:"player"`
+}
+
 func NewRPG(db *sql.DB) *RPG {
 	return &RPG{
 		Zones:    make(map[string]*Zone),
@@ -74,6 +79,29 @@ func (g *RPG) HandleMessages() {
 		case ACTION_MOVE:
 			g.PlayerMove(incoming)
 		}
+	}
+}
+
+func (g *RPG) PrepareDisplay() {
+	for _, z := range g.Zones {
+		z.BuildDisplayData()
+	}
+}
+
+func (g *RPG) BuildDisplayFor(pId int) DisplayData {
+	p, ok := g.Players[pId]
+	if !ok {
+		return DisplayData{}
+	}
+
+	zone, ok := g.Zones[p.CurrentZone]
+	if !ok {
+		return DisplayData{}
+	}
+
+	return DisplayData{
+		Player: *p,
+		Zone:   zone.DisplayData,
 	}
 }
 

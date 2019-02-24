@@ -8,6 +8,15 @@ type Zone struct {
 	Height  int
 	Map     []Tile
 	Players map[int]*Player
+
+	DisplayData ZoneDisplayData
+}
+
+type ZoneDisplayData struct {
+	Width    int                 `json:"width"`
+	Height   int                 `json:"height"`
+	Map      []Tile              `json:"map"`
+	Entities []PlayerDisplayData `json:"entities"`
 }
 
 func NewZone(name string, width int, height int) *Zone {
@@ -29,6 +38,20 @@ func NewZone(name string, width int, height int) *Zone {
 		Height:  height,
 		Map:     sampleMap,
 		Players: make(map[int]*Player),
+	}
+}
+
+func (z *Zone) BuildDisplayData() {
+	players := make([]PlayerDisplayData, 0)
+	for _, p := range z.Players {
+		p.UpdateDisplay()
+		players = append(players, p.DisplayData)
+	}
+	z.DisplayData = ZoneDisplayData{
+		Width:    z.Width,
+		Height:   z.Height,
+		Map:      z.Map,
+		Entities: players,
 	}
 }
 

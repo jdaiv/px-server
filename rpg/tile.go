@@ -1,6 +1,6 @@
 package rpg
 
 type Tile struct {
-	Type  string
-	Flags int
+	Type  string `json:"type"`
+	Flags int    `json:"flags"`
 }

@@ -74,12 +74,13 @@ func main() {
 	go func() {
 		for {
 			/* outgoing :=  */ <-game.Outgoing
+			game.PrepareDisplay()
 			clientsMutex.Lock()
-			for c := range clients {
+			for id, c := range authenticatedClients {
 				c.Write(WSResponse{
 					Error:  0,
 					Action: ACTION_GAME_STATE,
-					Data:   game.Zones["start"],
+					Data:   game.BuildDisplayFor(id),
 				})
 			}
 			clientsMutex.Unlock()
