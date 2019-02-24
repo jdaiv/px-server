@@ -64,6 +64,7 @@ func main() {
 
 	game = rpg.NewRPG(DB)
 	game.Zones["start"] = rpg.NewZone("start", 25, 25)
+	game.Zones["start"].AddEntity(rpg.NewSign("yeet"), "sign", 5, 5)
 	log.Println("[server] made game")
 
 	go ClientMaintenace()
@@ -73,30 +74,40 @@ func main() {
 
 	go func() {
 		for {
-			/* outgoing :=  */ <-game.Outgoing
-			game.PrepareDisplay()
-			clientsMutex.Lock()
-			for id, c := range authenticatedClients {
-				c.Write(WSResponse{
-					Error:  0,
-					Action: ACTION_GAME_STATE,
-					Data:   game.BuildDisplayFor(id),
-				})
+			outgoing := <-game.Outgoing
+			zone, ok := game.Zones[outgoing.Zone]
+			if !ok {
+				continue
 			}
-			clientsMutex.Unlock()
+
+			switch outgoing.Type {
+			case rpg.ACTION_UPDATE:
+				zone.BuildDisplayData()
+				clientsMutex.Lock()
+				for id := range zone.Players {
+					authenticatedClients[id].Write(WSResponse{
+						Error:  0,
+						Action: ACTION_GAME_STATE,
+						Data:   game.BuildDisplayFor(id),
+					})
+				}
+				clientsMutex.Unlock()
+			case rpg.ACTION_CHAT:
+				// todo
+			}
 		}
 	}()
 
-	// t := time.Now()
-	// go func() {
-	// 	for {
-	// 		_t := time.Now()
-	// 		dt := _t.Sub(t).Seconds()
-	// 		t = _t
-	// 		game.Tick(dt)
-	// 		time.Sleep(500 * time.Millisecond)
-	// 	}
-	// }()
+	t := time.Now()
+	go func() {
+		for {
+			_t := time.Now()
+			dt := _t.Sub(t).Seconds()
+			t = _t
+			game.Tick(dt)
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:         config.Addr,

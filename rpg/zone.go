@@ -3,11 +3,13 @@ package rpg
 import "math/rand"
 
 type Zone struct {
-	Name    string
-	Width   int
-	Height  int
-	Map     []Tile
-	Players map[int]*Player
+	Name        string
+	Width       int
+	Height      int
+	Map         []Tile
+	EntityCount int
+	Entities    map[int]Entity
+	Players     map[int]*Player
 
 	DisplayData ZoneDisplayData
 }
@@ -16,7 +18,8 @@ type ZoneDisplayData struct {
 	Width    int                 `json:"width"`
 	Height   int                 `json:"height"`
 	Map      []Tile              `json:"map"`
-	Entities []PlayerDisplayData `json:"entities"`
+	Entities []EntityInfo        `json:"entities"`
+	Players  []PlayerDisplayData `json:"players"`
 }
 
 func NewZone(name string, width int, height int) *Zone {
@@ -33,15 +36,20 @@ func NewZone(name string, width int, height int) *Zone {
 	}
 
 	return &Zone{
-		Name:    name,
-		Width:   width,
-		Height:  height,
-		Map:     sampleMap,
-		Players: make(map[int]*Player),
+		Name:     name,
+		Width:    width,
+		Height:   height,
+		Map:      sampleMap,
+		Players:  make(map[int]*Player),
+		Entities: make(map[int]Entity),
 	}
 }
 
 func (z *Zone) BuildDisplayData() {
+	entities := make([]EntityInfo, 0)
+	for _, e := range z.Entities {
+		entities = append(entities, e.GetInfo())
+	}
 	players := make([]PlayerDisplayData, 0)
 	for _, p := range z.Players {
 		p.UpdateDisplay()
@@ -51,8 +59,16 @@ func (z *Zone) BuildDisplayData() {
 		Width:    z.Width,
 		Height:   z.Height,
 		Map:      z.Map,
-		Entities: players,
+		Entities: entities,
+		Players:  players,
 	}
+}
+
+func (z *Zone) AddEntity(ent Entity, name string, x, y int) {
+	id := z.EntityCount
+	z.EntityCount += 1
+	ent.Init(z, id, name, x, y)
+	z.Entities[id] = ent
 }
 
 func (z *Zone) AddPlayer(player *Player) {
@@ -88,6 +104,13 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 		x += 1
 	case "W":
 		x -= 1
+	}
+
+	for _, e := range z.Entities {
+		info := e.GetInfo()
+		if info.Collision && x == info.X && y == info.Y {
+			return
+		}
 	}
 
 	if x < 0 {

@@ -20,6 +20,7 @@ type IncomingMessage struct {
 
 type OutgoingMessage struct {
 	PlayerId int                    `json:"-"`
+	Zone     string                 `json:"-"`
 	Type     string                 `json:"type"`
 	Params   map[string]interface{} `json:"params"`
 }
@@ -123,6 +124,7 @@ func (g *RPG) PlayerJoin(id int) {
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: id,
+		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
 	}
 }
@@ -136,6 +138,7 @@ func (g *RPG) PlayerLeave(id int) {
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: id,
+		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
 	}
 }
@@ -160,6 +163,7 @@ func (g *RPG) PlayerMove(msg IncomingMessage) {
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: msg.PlayerId,
+		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
 	}
 }
