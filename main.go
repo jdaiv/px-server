@@ -63,7 +63,7 @@ func main() {
 	log.Println("[server] connected to DB")
 
 	game = rpg.NewRPG(DB)
-	game.Zones["start"] = rpg.NewZone("start", 25, 25)
+	game.Zones["start"] = rpg.NewZone(game, "start", 25, 25)
 	game.Zones["start"].AddEntity(rpg.NewSign("yeet"), "sign", 5, 5)
 	log.Println("[server] made game")
 
@@ -93,7 +93,43 @@ func main() {
 				}
 				clientsMutex.Unlock()
 			case rpg.ACTION_CHAT:
-				// todo
+				message, ok := outgoing.Params["message"]
+				if !ok {
+					continue
+				}
+				messageStr, ok := message.(string)
+				if !ok {
+					continue
+				}
+				if outgoing.PlayerId >= 0 {
+					client, ok := authenticatedClients[outgoing.PlayerId]
+					if !ok {
+						continue
+					}
+					client.Write(WSResponse{
+						Error:  0,
+						Action: ACTION_CHAT_MESSAGE,
+						Data: messageSend{
+							Content: messageStr,
+							From:    "server",
+							Class:   MESSAGE_CLASS_SERVER,
+						},
+					})
+				} else {
+					clientsMutex.Lock()
+					for id := range zone.Players {
+						authenticatedClients[id].Write(WSResponse{
+							Error:  0,
+							Action: ACTION_CHAT_MESSAGE,
+							Data: messageSend{
+								Content: messageStr,
+								From:    "server",
+								Class:   MESSAGE_CLASS_SERVER,
+							},
+						})
+					}
+					clientsMutex.Unlock()
+				}
 			}
 		}
 	}()

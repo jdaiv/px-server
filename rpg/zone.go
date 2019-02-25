@@ -1,8 +1,12 @@
 package rpg
 
-import "math/rand"
+import (
+	"log"
+	"math/rand"
+)
 
 type Zone struct {
+	Parent      *RPG
 	Name        string
 	Width       int
 	Height      int
@@ -22,7 +26,7 @@ type ZoneDisplayData struct {
 	Players  []PlayerDisplayData `json:"players"`
 }
 
-func NewZone(name string, width int, height int) *Zone {
+func NewZone(parent *RPG, name string, width int, height int) *Zone {
 	sampleMap := make([]Tile, width*height)
 	for i := range sampleMap {
 		tileType := "flat"
@@ -36,6 +40,7 @@ func NewZone(name string, width int, height int) *Zone {
 	}
 
 	return &Zone{
+		Parent:   parent,
 		Name:     name,
 		Width:    width,
 		Height:   height,
@@ -69,6 +74,21 @@ func (z *Zone) AddEntity(ent Entity, name string, x, y int) {
 	z.EntityCount += 1
 	ent.Init(z, id, name, x, y)
 	z.Entities[id] = ent
+}
+
+func (z *Zone) SendMessage(player *Player, text string) {
+	playerId := -1
+	if player != nil {
+		playerId = player.Id
+	}
+	z.Parent.Outgoing <- OutgoingMessage{
+		PlayerId: playerId,
+		Zone:     z.Name,
+		Type:     ACTION_CHAT,
+		Params: map[string]interface{}{
+			"message": text,
+		},
+	}
 }
 
 func (z *Zone) AddPlayer(player *Player) {
@@ -134,4 +154,20 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 
 	player.X = x
 	player.Y = y
+}
+
+func (z *Zone) UseItem(player *Player, entId int) bool {
+	if player.CurrentZone != z.Name {
+		return false
+	}
+
+	ent, ok := z.Entities[entId]
+	if !ok {
+		log.Printf("[zone/%s] couldn't find ent %d", z.Name, entId)
+		return false
+	}
+
+	log.Printf("[zone/%s] using ent %d", z.Name, entId)
+
+	return ent.Use(player)
 }

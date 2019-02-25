@@ -1,6 +1,9 @@
 package rpg
 
+import "fmt"
+
 type EntityInfo struct {
+	Id        int    `json:"id"`
 	Name      string `json:"name"`
 	Type      string `json:"type"`
 	X         int    `json:"x"`
@@ -12,7 +15,7 @@ type EntityInfo struct {
 type Entity interface {
 	GetInfo() EntityInfo
 	Init(*Zone, int, string, int, int)
-	Use(Player) bool
+	Use(*Player) bool
 }
 
 type ent struct {
@@ -25,6 +28,7 @@ type ent struct {
 }
 
 func (e *ent) Init(zone *Zone, id int, name string, x, y int) {
+	e.Zone = zone
 	e.Id = id
 	e.Name = name
 	e.X = x
@@ -42,6 +46,7 @@ func NewSign(text string) *EntSign {
 
 func (s *EntSign) GetInfo() EntityInfo {
 	return EntityInfo{
+		Id:        s.Id,
 		Name:      "SIGN",
 		Type:      "sign",
 		X:         5,
@@ -51,6 +56,7 @@ func (s *EntSign) GetInfo() EntityInfo {
 	}
 }
 
-func (s *EntSign) Use(player Player) bool {
-	return false
+func (s *EntSign) Use(player *Player) bool {
+	s.Zone.SendMessage(player, fmt.Sprintf("the sign says: %s", s.Text))
+	return true
 }

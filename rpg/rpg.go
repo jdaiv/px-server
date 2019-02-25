@@ -2,6 +2,7 @@ package rpg
 
 import (
 	"database/sql"
+	"log"
 )
 
 type RPG struct {
@@ -58,16 +59,6 @@ func NewRPG(db *sql.DB) *RPG {
 		* Chat message
 
 */
-const (
-	ACTION_JOIN  = "join"
-	ACTION_LEAVE = "leave"
-	ACTION_MOVE  = "move"
-	ACTION_USE   = "use"
-
-	ACTION_UPDATE        = "state_update"
-	ACTION_UPDATE_PLAYER = "player_update"
-	ACTION_CHAT          = "chat_message"
-)
 
 func (g *RPG) HandleMessages() {
 	for {
@@ -79,6 +70,8 @@ func (g *RPG) HandleMessages() {
 			g.PlayerLeave(incoming.PlayerId)
 		case ACTION_MOVE:
 			g.PlayerMove(incoming)
+		case ACTION_USE:
+			g.PlayerUse(incoming)
 		}
 	}
 }
@@ -165,5 +158,39 @@ func (g *RPG) PlayerMove(msg IncomingMessage) {
 		PlayerId: msg.PlayerId,
 		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
+	}
+}
+
+func (g *RPG) PlayerUse(msg IncomingMessage) {
+	p, ok := g.Players[msg.PlayerId]
+	if !ok {
+		log.Printf("couldn't find player %d", msg.PlayerId)
+		return
+	}
+
+	zone, ok := g.Zones[p.CurrentZone]
+	if !ok {
+		log.Printf("couldn't find zone %s", p.CurrentZone)
+		return
+	}
+
+	entIdParam, ok := msg.Data.Params["id"]
+	if !ok {
+		log.Println("couldn't find ent id param")
+		return
+	}
+
+	entId, ok := entIdParam.(float64)
+	if !ok {
+		log.Println("ent id param not number")
+		return
+	}
+
+	if zone.UseItem(p, int(entId)) {
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: msg.PlayerId,
+			Zone:     p.CurrentZone,
+			Type:     ACTION_UPDATE,
+		}
 	}
 }
