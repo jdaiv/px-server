@@ -1,0 +1,8 @@
+[attack]
+Name = "Fightin'"
+[attack_ranged]
+Name = "Shootin'"
+[defense]
+Name = "Defendin'"
+[magic]
+Name = "Thinkin'"

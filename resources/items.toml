@@ -1,0 +1,21 @@
+
+[sunglasses]
+Name = 'Sunglasses'
+Type = 'helmet'
+MaxQty = 1
+Durability = 9999
+Special = ['sunglasses']
+[sunglasses.requirements]
+cool = 99
+[sunglasses.stats]
+armor = 0
+
+[potion]
+Name = 'Sunglasses'
+Type = 'helmet'
+MaxQty = 1
+Durability = 9999
+Special = ['consumable']
+[potion.requirements]
+[potion.stats]
+restore = 10

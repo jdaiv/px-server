@@ -13,6 +13,9 @@ type Definitions struct {
 	Zones    map[string]ZoneDef
 	Tiles    map[string]TileDef
 	Entities map[string]EntityDef
+	Items    map[string]ItemDef
+	ItemMods map[string]ItemModDef
+	Skills   map[string]SkillDef
 }
 
 type RPGDef struct {
@@ -56,6 +59,24 @@ type ZoneEntityDef struct {
 	Ints     map[string]int
 }
 
+type ItemDef struct {
+	Name       string
+	Type       string
+	MaxQty     int
+	Durability int
+	Special    []string
+	Stats      map[string]int
+}
+
+type ItemModDef struct {
+	Name  string
+	Stats map[string]float64
+}
+
+type SkillDef struct {
+	Name string
+}
+
 func LoadDefinitions(dir string) (*Definitions, error) {
 	def := Definitions{}
 
@@ -82,6 +103,21 @@ func LoadDefinitions(dir string) (*Definitions, error) {
 			return nil, err
 		}
 		def.Zones[z] = zone
+	}
+
+	if _, err := toml.DecodeFile(dir+"items.toml", &def.Items); err != nil {
+		log.Printf("[rpg/definitions] error loading item definitions: %v", err)
+		return nil, err
+	}
+
+	if _, err := toml.DecodeFile(dir+"item_mods.toml", &def.ItemMods); err != nil {
+		log.Printf("[rpg/definitions] error loading item mod definitions: %v", err)
+		return nil, err
+	}
+
+	if _, err := toml.DecodeFile(dir+"skills.toml", &def.Skills); err != nil {
+		log.Printf("[rpg/definitions] error loading skill definitions: %v", err)
+		return nil, err
 	}
 
 	return &def, nil
