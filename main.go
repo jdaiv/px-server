@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"bitbucket.org/panicexpress/backend/rpg"
@@ -31,6 +32,7 @@ type Config struct {
 }
 
 var configLocation = flag.String("config", "config.toml", "location of config file")
+var resLocation = flag.String("res", "resources", "location of static resources")
 
 var game *rpg.RPG
 
@@ -62,7 +64,11 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
-	game, err = rpg.NewRPG("resources/", DB)
+	resPath := *resLocation
+	if !strings.HasSuffix(resPath, "/") {
+		resPath += "/"
+	}
+	game, err = rpg.NewRPG(resPath, DB)
 	if err != nil {
 		log.Fatal(err)
 	}
