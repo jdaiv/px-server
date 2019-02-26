@@ -62,6 +62,7 @@ func main() {
 
 	log.Println("[server] connected to DB")
 
+	rpg.LoadDefinitions("resources/")
 	game = rpg.NewRPG(DB)
 	game.Zones["start"] = rpg.NewZone(game, "start", 25, 25)
 	game.Zones["start"].AddEntity(rpg.NewSign("yeet"), "sign", 5, 5)

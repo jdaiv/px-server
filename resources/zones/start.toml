@@ -1,5 +1,7 @@
 
 SpawnPoint = [1, 1]
+Width = 6
+Height = 6
 Map = [
     'default', 'default', 'default', 'default', 'default', 'default',
     'default', 'grass', 'grass', 'grass', 'grass', 'default',
@@ -10,6 +12,8 @@ Map = [
 ]
 
 [[Entity]]
+Ref = 'welcome_sign'
+Name = 'Welcome Sign'
 Type = 'sign'
 Position = [2, 2]
 [Entity.Strings]
