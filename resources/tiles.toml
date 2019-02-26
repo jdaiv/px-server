@@ -1,0 +1,9 @@
+
+[default]
+Blocking = false
+
+[grass]
+Blocking = false
+
+[water]
+Blocking = false

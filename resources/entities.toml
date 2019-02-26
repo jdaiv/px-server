@@ -1,0 +1,15 @@
+
+[sign]
+DefaultName = 'SIGN_DEFAULT_NAME'
+Draw = 'sign'
+Size = [1, 1]
+Usable = true
+UseFunc = 'UseSign'
+Strings = ['message']
+
+[door]
+DefaultName = 'DOOR_DEFAULT_NAME'
+Size = [1, 1]
+Usable = true
+UseFunc = 'UseDoor'
+Strings = ['target_zone']

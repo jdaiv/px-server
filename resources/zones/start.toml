@@ -1,0 +1,16 @@
+
+SpawnPoint = [1, 1]
+Map = [
+    'default', 'default', 'default', 'default', 'default', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'default', 'default', 'default', 'default', 'default',
+]
+
+[[Entity]]
+Type = 'sign'
+Position = [2, 2]
+[Entity.Strings]
+Message = 'Welcome!'
