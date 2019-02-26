@@ -7,9 +7,9 @@ import (
 
 const MISSING_ENT_STR = "!MISSING STRING!"
 
-var entityUseFuncs = map[string]func(*Entity, *Player) bool{
+var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 	"use_sign": UseSign,
-	// "use_door": UseDoor,
+	"use_door": UseDoor,
 }
 
 type EntityInfo struct {
@@ -70,14 +70,37 @@ func (e *Entity) Use(player *Player) (bool, error) {
 	if !ok {
 		return false, errors.New("entity use func missing")
 	}
-	return fn(e, player), nil
+	return fn(e, player)
 }
 
-func UseSign(ent *Entity, player *Player) bool {
+func UseSign(ent *Entity, player *Player) (bool, error) {
 	str, ok := ent.Def.Strings["message"]
 	if !ok {
 		str = MISSING_ENT_STR
 	}
 	ent.Zone.SendMessage(player, fmt.Sprintf("the sign says: %s", str))
-	return false
+	return false, nil
+}
+
+func UseDoor(ent *Entity, player *Player) (bool, error) {
+	targetZone, ok := ent.Def.Strings["target_zone"]
+	if !ok {
+		return false, errors.New("target zone not found")
+	}
+	targetX, ok := ent.Def.Ints["x"]
+	if !ok {
+		targetX = -1
+	}
+	targetY, ok := ent.Def.Ints["y"]
+	if !ok {
+		targetY = -1
+	}
+	root := ent.Zone.Parent
+	newZone, ok := root.Zones[targetZone]
+	if !ok {
+		return false, errors.New("target zone doesn't exist")
+	}
+	ent.Zone.RemovePlayer(player)
+	newZone.AddPlayer(player, targetX, targetY)
+	return true, nil
 }

@@ -4,6 +4,7 @@ DefaultName = 'SIGN_DEFAULT_NAME'
 Draw = 'sign'
 Size = [1, 1]
 Usable = true
+Blocking = true
 UseFunc = 'use_sign'
 Strings = ['message']
 
@@ -11,5 +12,7 @@ Strings = ['message']
 DefaultName = 'DOOR_DEFAULT_NAME'
 Size = [1, 1]
 Usable = true
+Blocking = true
 UseFunc = 'use_door'
 Strings = ['target_zone']
+Ints = ['x', 'y']

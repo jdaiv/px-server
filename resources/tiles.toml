@@ -6,4 +6,4 @@ Blocking = false
 Blocking = false
 
 [water]
-Blocking = false
+Blocking = true

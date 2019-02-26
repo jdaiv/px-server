@@ -3,3 +3,5 @@ StartingZone = 'start'
 
 [Zones.start]
 Enabled = true
+[Zones.test]
+Enabled = true

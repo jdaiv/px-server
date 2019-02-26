@@ -5,15 +5,16 @@ import (
 )
 
 type Zone struct {
-	Parent      *RPG
-	Def         ZoneDef
-	Name        string
-	Width       int
-	Height      int
-	Map         []Tile
-	EntityCount int
-	Entities    map[int]*Entity
-	Players     map[int]*Player
+	Parent       *RPG
+	Def          ZoneDef
+	Name         string
+	Width        int
+	Height       int
+	Map          []Tile
+	CollisionMap []bool
+	EntityCount  int
+	Entities     map[int]*Entity
+	Players      map[int]*Player
 
 	DisplayData ZoneDisplayData
 }
@@ -33,14 +34,15 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 	}
 
 	zone := &Zone{
-		Parent:   parent,
-		Def:      def,
-		Name:     name,
-		Width:    def.Width,
-		Height:   def.Height,
-		Map:      tileMap,
-		Players:  make(map[int]*Player),
-		Entities: make(map[int]*Entity),
+		Parent:       parent,
+		Def:          def,
+		Name:         name,
+		Width:        def.Width,
+		Height:       def.Height,
+		Map:          tileMap,
+		CollisionMap: make([]bool, def.Width*def.Height),
+		Players:      make(map[int]*Player),
+		Entities:     make(map[int]*Entity),
 	}
 
 	for _, e := range def.Entity {
@@ -54,7 +56,20 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 		zone.EntityCount += 1
 	}
 
+	zone.BuildCollisionMap()
+
 	return zone
+}
+
+func (z *Zone) BuildCollisionMap() {
+	for i, t := range z.Map {
+		z.CollisionMap[i] = t.Blocking
+	}
+	for _, e := range z.Entities {
+		if e.RootDef.Blocking {
+			z.CollisionMap[e.X+e.Y*z.Width] = true
+		}
+	}
 }
 
 func (z *Zone) BuildDisplayData() {
@@ -91,11 +106,24 @@ func (z *Zone) SendMessage(player *Player, text string) {
 	}
 }
 
-func (z *Zone) AddPlayer(player *Player) {
+func (z *Zone) AddPlayer(player *Player, x, y int) {
 	if player.CurrentZone != "" {
 		return
 	}
 	player.CurrentZone = z.Name
+
+	if x >= 0 {
+		player.X = x
+	} else {
+		player.X = z.Def.SpawnPoint[0]
+	}
+
+	if y >= 0 {
+		player.Y = y
+	} else {
+		player.Y = z.Def.SpawnPoint[1]
+	}
+
 	z.Players[player.Id] = player
 }
 
@@ -105,6 +133,7 @@ func (z *Zone) RemovePlayer(player *Player) {
 	}
 
 	delete(z.Players, player.Id)
+	player.CurrentZone = ""
 }
 
 func (z *Zone) MovePlayer(player *Player, direction string) {
@@ -126,19 +155,6 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 		x -= 1
 	}
 
-	for _, e := range z.Entities {
-		info := e.GetInfo()
-		if info.Blocking && x == info.X && y == info.Y {
-			return
-		}
-	}
-
-	for _, p := range z.Players {
-		if x == p.X && y == p.Y {
-			return
-		}
-	}
-
 	if x < 0 {
 		x = 0
 	}
@@ -150,6 +166,16 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 	}
 	if y >= z.Height {
 		y = z.Height - 1
+	}
+
+	if z.CollisionMap[x+y*z.Width] {
+		return
+	}
+
+	for _, p := range z.Players {
+		if x == p.X && y == p.Y {
+			return
+		}
 	}
 
 	player.X = x

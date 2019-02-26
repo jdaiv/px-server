@@ -44,6 +44,7 @@ type EntityDef struct {
 	Usable      bool
 	UseFunc     string
 	Strings     []string
+	Ints        []string
 }
 
 type ZoneEntityDef struct {
@@ -52,6 +53,7 @@ type ZoneEntityDef struct {
 	Type     string
 	Position Position
 	Strings  map[string]string
+	Ints     map[string]int
 }
 
 func LoadDefinitions(dir string) (*Definitions, error) {

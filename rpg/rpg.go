@@ -67,6 +67,7 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 		* Player leave
 		* Player move
 		* Player use
+		* Player change zone
 
 	outgoing action types:
 		* Player update
@@ -127,7 +128,7 @@ func (g *RPG) PlayerJoin(id int) {
 	}
 
 	g.Players[id] = p
-	g.Zones["start"].AddPlayer(p)
+	g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: id,
@@ -200,11 +201,19 @@ func (g *RPG) PlayerUse(msg IncomingMessage) {
 		return
 	}
 
+	oldZone := p.CurrentZone
+
 	if zone.UseItem(p, int(entId)) {
 		g.Outgoing <- OutgoingMessage{
 			PlayerId: msg.PlayerId,
 			Zone:     p.CurrentZone,
 			Type:     ACTION_UPDATE,
+		}
+		if p.CurrentZone != oldZone {
+			g.Outgoing <- OutgoingMessage{
+				Zone: oldZone,
+				Type: ACTION_UPDATE,
+			}
 		}
 	}
 }
