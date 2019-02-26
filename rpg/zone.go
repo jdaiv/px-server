@@ -20,11 +20,11 @@ type Zone struct {
 }
 
 type ZoneDisplayData struct {
-	Width    int                 `json:"width"`
-	Height   int                 `json:"height"`
-	Map      []Tile              `json:"map"`
-	Entities []EntityInfo        `json:"entities"`
-	Players  []PlayerDisplayData `json:"players"`
+	Width    int                       `json:"width"`
+	Height   int                       `json:"height"`
+	Map      []Tile                    `json:"map"`
+	Entities []EntityInfo              `json:"entities"`
+	Players  map[int]PlayerDisplayData `json:"players"`
 }
 
 func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
@@ -77,10 +77,10 @@ func (z *Zone) BuildDisplayData() {
 	for _, e := range z.Entities {
 		entities = append(entities, e.GetInfo())
 	}
-	players := make([]PlayerDisplayData, 0)
+	players := make(map[int]PlayerDisplayData)
 	for _, p := range z.Players {
 		p.UpdateDisplay()
-		players = append(players, p.DisplayData)
+		players[p.Id] = p.DisplayData
 	}
 	z.DisplayData = ZoneDisplayData{
 		Width:    z.Width,
@@ -193,6 +193,11 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 		return false
 	}
 
+	if intAbs(int64(ent.X-player.X)) > 1 || intAbs(int64(ent.X-player.X)) > 1 {
+		log.Printf("[rpg/zone/%s/use] player %d tried to use ent %d, but was too far away", z.Name, player.Id, entId)
+		return false
+	}
+
 	log.Printf("[rpg/zone/%s/use] using ent %d", z.Name, entId)
 
 	needsUpdate, err := ent.Use(player)
@@ -201,4 +206,10 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 	}
 
 	return needsUpdate
+}
+
+// thanks http://cavaliercoder.com/blog/optimized-abs-for-int64-in-go.html
+func intAbs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
 }
