@@ -2,17 +2,17 @@ package rpg
 
 import (
 	"log"
-	"math/rand"
 )
 
 type Zone struct {
 	Parent      *RPG
+	Def         ZoneDef
 	Name        string
 	Width       int
 	Height      int
 	Map         []Tile
 	EntityCount int
-	Entities    map[int]Entity
+	Entities    map[int]*Entity
 	Players     map[int]*Player
 
 	DisplayData ZoneDisplayData
@@ -26,28 +26,35 @@ type ZoneDisplayData struct {
 	Players  []PlayerDisplayData `json:"players"`
 }
 
-func NewZone(parent *RPG, name string, width int, height int) *Zone {
-	sampleMap := make([]Tile, width*height)
-	for i := range sampleMap {
-		tileType := "flat"
-		if rand.Intn(2) == 1 {
-			tileType = "grass"
-		}
-		sampleMap[i] = Tile{
-			Type:  tileType,
-			Flags: 0,
-		}
+func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
+	tileMap := make([]Tile, def.Width*def.Height)
+	for i, t := range def.Map {
+		tileMap[i] = TileFromDef(t, parent.Defs)
 	}
 
-	return &Zone{
+	zone := &Zone{
 		Parent:   parent,
+		Def:      def,
 		Name:     name,
-		Width:    width,
-		Height:   height,
-		Map:      sampleMap,
+		Width:    def.Width,
+		Height:   def.Height,
+		Map:      tileMap,
 		Players:  make(map[int]*Player),
-		Entities: make(map[int]Entity),
+		Entities: make(map[int]*Entity),
 	}
+
+	for _, e := range def.Entity {
+		id := zone.EntityCount
+		ent, err := NewEntity(zone, id, e)
+		if err != nil {
+			log.Printf("[rpg/zone/create/%s] error creating entity '%s': %v", name, e.Type, err)
+			continue
+		}
+		zone.Entities[id] = ent
+		zone.EntityCount += 1
+	}
+
+	return zone
 }
 
 func (z *Zone) BuildDisplayData() {
@@ -67,13 +74,6 @@ func (z *Zone) BuildDisplayData() {
 		Entities: entities,
 		Players:  players,
 	}
-}
-
-func (z *Zone) AddEntity(ent Entity, name string, x, y int) {
-	id := z.EntityCount
-	z.EntityCount += 1
-	ent.Init(z, id, name, x, y)
-	z.Entities[id] = ent
 }
 
 func (z *Zone) SendMessage(player *Player, text string) {
@@ -128,7 +128,7 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 
 	for _, e := range z.Entities {
 		info := e.GetInfo()
-		if info.Collision && x == info.X && y == info.Y {
+		if info.Blocking && x == info.X && y == info.Y {
 			return
 		}
 	}
@@ -163,11 +163,16 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 
 	ent, ok := z.Entities[entId]
 	if !ok {
-		log.Printf("[zone/%s] couldn't find ent %d", z.Name, entId)
+		log.Printf("[rpg/zone/%s/use] couldn't find ent %d", z.Name, entId)
 		return false
 	}
 
-	log.Printf("[zone/%s] using ent %d", z.Name, entId)
+	log.Printf("[rpg/zone/%s/use] using ent %d", z.Name, entId)
 
-	return ent.Use(player)
+	needsUpdate, err := ent.Use(player)
+	if err != nil {
+		log.Printf("[rpg/zone/%s/use] failed to use ent %d (%s): %v", z.Name, entId, ent.Type, err)
+	}
+
+	return needsUpdate
 }

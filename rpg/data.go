@@ -40,6 +40,7 @@ type EntityDef struct {
 	DefaultName string
 	Draw        string
 	Size        Position
+	Blocking    bool
 	Usable      bool
 	UseFunc     string
 	Strings     []string

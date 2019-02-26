@@ -12,9 +12,15 @@ Map = [
 ]
 
 [[Entity]]
-Ref = 'welcome_sign'
 Name = 'Welcome Sign'
 Type = 'sign'
 Position = [2, 2]
 [Entity.Strings]
-Message = 'Welcome!'
+message = 'Welcome!'
+
+[[Entity]]
+Name = 'Welcome Sign 2'
+Type = 'sign'
+Position = [3, 2]
+[Entity.Strings]
+message = 'Enjoy your stay!'

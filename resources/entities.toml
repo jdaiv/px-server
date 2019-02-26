@@ -4,12 +4,12 @@ DefaultName = 'SIGN_DEFAULT_NAME'
 Draw = 'sign'
 Size = [1, 1]
 Usable = true
-UseFunc = 'UseSign'
+UseFunc = 'use_sign'
 Strings = ['message']
 
 [door]
 DefaultName = 'DOOR_DEFAULT_NAME'
 Size = [1, 1]
 Usable = true
-UseFunc = 'UseDoor'
+UseFunc = 'use_door'
 Strings = ['target_zone']

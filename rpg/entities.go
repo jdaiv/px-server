@@ -1,62 +1,83 @@
 package rpg
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+const MISSING_ENT_STR = "!MISSING STRING!"
+
+var entityUseFuncs = map[string]func(*Entity, *Player) bool{
+	"use_sign": UseSign,
+	// "use_door": UseDoor,
+}
 
 type EntityInfo struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Usable    bool   `json:"usable"`
-	Collision bool   `json:"-"`
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
+	Usable   bool   `json:"usable"`
+	Blocking bool   `json:"-"`
 }
 
-type Entity interface {
-	GetInfo() EntityInfo
-	Init(*Zone, int, string, int, int)
-	Use(*Player) bool
+type Entity struct {
+	Def     ZoneEntityDef
+	RootDef EntityDef
+	Zone    *Zone
+	Id      int
+	Name    string
+	Type    string
+	X       int
+	Y       int
 }
 
-type ent struct {
-	Zone *Zone
-	Id   int
-	Name string
-	Type string
-	X    int
-	Y    int
+func NewEntity(zone *Zone, id int, def ZoneEntityDef) (*Entity, error) {
+	entityDef, ok := zone.Parent.Defs.Entities[def.Type]
+	if !ok {
+		return nil, errors.New("entity missing")
+	}
+	return &Entity{
+		Def:     def,
+		RootDef: entityDef,
+		Zone:    zone,
+		Id:      id,
+		Name:    def.Name,
+		Type:    def.Type,
+		X:       def.Position[0],
+		Y:       def.Position[1],
+	}, nil
 }
 
-func (e *ent) Init(zone *Zone, id int, name string, x, y int) {
-	e.Zone = zone
-	e.Id = id
-	e.Name = name
-	e.X = x
-	e.Y = y
-}
-
-type EntSign struct {
-	ent
-	Text string
-}
-
-func NewSign(text string) *EntSign {
-	return &EntSign{ent: ent{Type: "sign"}, Text: text}
-}
-
-func (s *EntSign) GetInfo() EntityInfo {
+func (e *Entity) GetInfo() EntityInfo {
 	return EntityInfo{
-		Id:        s.Id,
-		Name:      "SIGN",
-		Type:      "sign",
-		X:         5,
-		Y:         5,
-		Usable:    true,
-		Collision: true,
+		Id:       e.Id,
+		Name:     e.Name,
+		Type:     e.Type,
+		X:        e.X,
+		Y:        e.Y,
+		Usable:   e.RootDef.Usable,
+		Blocking: e.RootDef.Blocking,
 	}
 }
 
-func (s *EntSign) Use(player *Player) bool {
-	s.Zone.SendMessage(player, fmt.Sprintf("the sign says: %s", s.Text))
-	return true
+func (e *Entity) Use(player *Player) (bool, error) {
+	if !e.RootDef.Usable {
+		return false, nil
+	}
+	fn, ok := entityUseFuncs[e.RootDef.UseFunc]
+	if !ok {
+		return false, errors.New("entity use func missing")
+	}
+	return fn(e, player), nil
+}
+
+func UseSign(ent *Entity, player *Player) bool {
+	str, ok := ent.Def.Strings["message"]
+	if !ok {
+		str = MISSING_ENT_STR
+	}
+	ent.Zone.SendMessage(player, fmt.Sprintf("the sign says: %s", str))
+	return false
 }

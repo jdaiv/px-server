@@ -6,6 +6,7 @@ import (
 )
 
 type RPG struct {
+	Defs    *Definitions
 	Zones   map[string]*Zone
 	Players map[int]*Player
 
@@ -36,14 +37,28 @@ type DisplayData struct {
 	Player Player          `json:"player"`
 }
 
-func NewRPG(db *sql.DB) *RPG {
-	return &RPG{
+func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
+	defs, err := LoadDefinitions(defDir)
+	if err != nil {
+		return nil, err
+	}
+
+	rpg := &RPG{
+		Defs:     defs,
 		Zones:    make(map[string]*Zone),
 		Players:  make(map[int]*Player),
 		Incoming: make(chan IncomingMessage),
 		Outgoing: make(chan OutgoingMessage),
 		DB:       db,
 	}
+
+	for k, v := range defs.Zones {
+		if defs.RPG.Zones[k].Enabled {
+			rpg.Zones[k] = NewZone(rpg, k, v)
+		}
+	}
+
+	return rpg, nil
 }
 
 /*
@@ -57,7 +72,6 @@ func NewRPG(db *sql.DB) *RPG {
 		* Player update
 		* State update
 		* Chat message
-
 */
 
 func (g *RPG) HandleMessages() {
