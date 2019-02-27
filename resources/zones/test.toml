@@ -14,7 +14,7 @@ Map = [
 ]
 
 [[Entity]]
-Name = 'Exit'
+Name = 'exit'
 Type = 'door'
 Position = [0, 3]
 [Entity.Strings]

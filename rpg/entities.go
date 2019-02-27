@@ -20,6 +20,7 @@ type EntityInfo struct {
 	X        int    `json:"x"`
 	Y        int    `json:"y"`
 	Usable   bool   `json:"usable"`
+	UseText  string `json:"useText"`
 	Blocking bool   `json:"-"`
 }
 
@@ -63,6 +64,7 @@ func (e *Entity) GetInfo() EntityInfo {
 		X:        e.X,
 		Y:        e.Y,
 		Usable:   e.RootDef.Usable,
+		UseText:  e.RootDef.UseText,
 		Blocking: e.RootDef.Blocking,
 	}
 }

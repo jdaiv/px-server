@@ -46,6 +46,7 @@ type EntityDef struct {
 	Blocking    bool
 	Usable      bool
 	UseFunc     string
+	UseText     string
 	Strings     []string
 	Ints        []string
 }

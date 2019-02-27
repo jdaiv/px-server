@@ -14,14 +14,14 @@ Map = [
 ]
 
 [[Entity]]
-Name = 'Welcome Sign'
+Name = 'welcome sign'
 Type = 'sign'
 Position = [3, 0]
 [Entity.Strings]
 message = 'Welcome!'
 
 [[Entity]]
-Name = 'Exit'
+Name = 'exit'
 Type = 'door'
 Position = [5, 3]
 [Entity.Strings]
@@ -31,7 +31,7 @@ x = 1
 y = 3
 
 [[Entity]]
-Name = 'Item Spawner'
+Name = 'item spawner'
 Type = 'item_spawner'
 Position = [2, 0]
 [Entity.Strings]
