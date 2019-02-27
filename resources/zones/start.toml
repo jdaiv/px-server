@@ -16,16 +16,9 @@ Map = [
 [[Entity]]
 Name = 'Welcome Sign'
 Type = 'sign'
-Position = [2, 2]
+Position = [3, 0]
 [Entity.Strings]
 message = 'Welcome!'
-
-[[Entity]]
-Name = 'Welcome Sign 2'
-Type = 'sign'
-Position = [3, 2]
-[Entity.Strings]
-message = 'Enjoy your stay!'
 
 [[Entity]]
 Name = 'Exit'
@@ -36,3 +29,13 @@ target_zone = 'test'
 [Entity.Ints]
 x = 1
 y = 3
+
+[[Entity]]
+Name = 'Item Spawner'
+Type = 'item_spawner'
+Position = [2, 0]
+[Entity.Strings]
+item_id = 'sunglasses'
+[Entity.Ints]
+x = 2
+y = 1

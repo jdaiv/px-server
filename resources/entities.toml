@@ -16,3 +16,19 @@ Blocking = true
 UseFunc = 'use_door'
 Strings = ['target_zone']
 Ints = ['x', 'y']
+
+[item_spawner]
+DefaultName = 'ITEM_SPAWNER_DEFAULT_NAME'
+Size = [1, 1]
+Usable = true
+Blocking = true
+UseFunc = 'spawn_item'
+Strings = ['item_id']
+Ints = ['x', 'y']
+
+[item_bag]
+DefaultName = 'Item'
+Size = [1, 1]
+Usable = true
+Blocking = false
+UseFunc = 'take_item'

@@ -46,14 +46,7 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 	}
 
 	for _, e := range def.Entity {
-		id := zone.EntityCount
-		ent, err := NewEntity(zone, id, e)
-		if err != nil {
-			log.Printf("[rpg/zone/create/%s] error creating entity '%s': %v", name, e.Type, err)
-			continue
-		}
-		zone.Entities[id] = ent
-		zone.EntityCount += 1
+		zone.AddEntity(e)
 	}
 
 	zone.BuildCollisionMap()
@@ -89,6 +82,17 @@ func (z *Zone) BuildDisplayData() {
 		Entities: entities,
 		Players:  players,
 	}
+}
+
+func (z *Zone) AddEntity(def ZoneEntityDef) {
+	id := z.EntityCount
+	ent, err := NewEntity(z, id, def)
+	if err != nil {
+		log.Printf("[rpg/zone/create/%s] error creating entity '%s': %v", z.Name, def.Type, err)
+		return
+	}
+	z.Entities[id] = ent
+	z.EntityCount += 1
 }
 
 func (z *Zone) SendMessage(player *Player, text string) {
