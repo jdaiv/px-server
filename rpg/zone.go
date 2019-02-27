@@ -46,7 +46,7 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 	}
 
 	for _, e := range def.Entity {
-		zone.AddEntity(e)
+		zone.AddEntity(e, false)
 	}
 
 	zone.BuildCollisionMap()
@@ -84,7 +84,7 @@ func (z *Zone) BuildDisplayData() {
 	}
 }
 
-func (z *Zone) AddEntity(def ZoneEntityDef) {
+func (z *Zone) AddEntity(def ZoneEntityDef, updateCollisions bool) {
 	id := z.EntityCount
 	ent, err := NewEntity(z, id, def)
 	if err != nil {
@@ -93,6 +93,15 @@ func (z *Zone) AddEntity(def ZoneEntityDef) {
 	}
 	z.Entities[id] = ent
 	z.EntityCount += 1
+
+	if updateCollisions {
+		z.BuildCollisionMap()
+	}
+}
+
+func (z *Zone) RemoveEntity(entId int) {
+	delete(z.Entities, entId)
+	z.BuildCollisionMap()
 }
 
 func (z *Zone) SendMessage(player *Player, text string) {

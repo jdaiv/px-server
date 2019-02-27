@@ -11,6 +11,7 @@ var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 	"use_sign":   UseSign,
 	"use_door":   UseDoor,
 	"spawn_item": SpawnItem,
+	"take_item":  TakeItem,
 }
 
 type EntityInfo struct {
@@ -129,7 +130,12 @@ func SpawnItem(ent *Entity, player *Player) (bool, error) {
 	ent.Zone.AddEntity(ZoneEntityDef{
 		Type:     "item_bag",
 		Position: Position{x, y},
-	})
+	}, true)
 
+	return true, nil
+}
+
+func TakeItem(ent *Entity, player *Player) (bool, error) {
+	ent.Zone.RemoveEntity(ent.Id)
 	return true, nil
 }
