@@ -119,6 +119,19 @@ func (z *Zone) SendMessage(player *Player, text string) {
 	}
 }
 
+func (z *Zone) SendEffect(effectType string, x, y int) {
+	z.Parent.Outgoing <- OutgoingMessage{
+		PlayerId: -1,
+		Zone:     z.Name,
+		Type:     ACTION_EFFECT,
+		Params: map[string]interface{}{
+			"type": effectType,
+			"x":    x,
+			"y":    y,
+		},
+	}
+}
+
 func (z *Zone) AddPlayer(player *Player, x, y int) {
 	if player.CurrentZone != "" {
 		return

@@ -30,9 +30,17 @@ Strings = ['item_id']
 Ints = ['x', 'y']
 
 [item_bag]
-DefaultName = 'Item'
+DefaultName = 'item bag'
 Size = [1, 1]
 Usable = true
 UseText = 'take'
 Blocking = false
 UseFunc = 'take_item'
+
+[dummy]
+DefaultName = 'training dummy'
+Size = [1, 1]
+Usable = true
+UseText = 'attack'
+Blocking = true
+UseFunc = 'attack_dummy'

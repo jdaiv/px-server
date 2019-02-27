@@ -22,3 +22,7 @@ target_zone = 'start'
 [Entity.Ints]
 x = 4
 y = 3
+
+[[Entity]]
+Type = 'dummy'
+Position = [3, 3]

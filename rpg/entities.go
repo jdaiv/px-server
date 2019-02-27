@@ -8,10 +8,11 @@ import (
 const MISSING_ENT_STR = "!MISSING STRING!"
 
 var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
-	"use_sign":   UseSign,
-	"use_door":   UseDoor,
-	"spawn_item": SpawnItem,
-	"take_item":  TakeItem,
+	"use_sign":     UseSign,
+	"use_door":     UseDoor,
+	"spawn_item":   SpawnItem,
+	"take_item":    TakeItem,
+	"attack_dummy": AttackDummy,
 }
 
 type EntityInfo struct {
@@ -137,5 +138,10 @@ func SpawnItem(ent *Entity, player *Player) (bool, error) {
 
 func TakeItem(ent *Entity, player *Player) (bool, error) {
 	ent.Zone.RemoveEntity(ent.Id)
+	return true, nil
+}
+
+func AttackDummy(ent *Entity, player *Player) (bool, error) {
+	ent.Zone.SendEffect("wood_ex", ent.X, ent.Y)
 	return true, nil
 }

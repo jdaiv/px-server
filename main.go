@@ -138,6 +138,16 @@ func main() {
 					}
 					clientsMutex.Unlock()
 				}
+			default:
+				clientsMutex.Lock()
+				for id := range zone.Players {
+					authenticatedClients[id].Write(WSResponse{
+						Error:  0,
+						Action: ActionStr(outgoing.Type),
+						Data:   outgoing.Params,
+					})
+				}
+				clientsMutex.Unlock()
 			}
 		}
 	}()
