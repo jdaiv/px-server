@@ -80,7 +80,7 @@ func (g *RPG) HandleMessages() {
 		incoming := <-g.Incoming
 		switch incoming.Data.Type {
 		case ACTION_JOIN:
-			g.PlayerJoin(incoming.PlayerId)
+			g.PlayerJoin(incoming)
 		case ACTION_LEAVE:
 			g.PlayerLeave(incoming.PlayerId)
 		case ACTION_MOVE:
@@ -118,20 +118,29 @@ func (g *RPG) Tick(dt float64) {
 
 }
 
-func (g *RPG) PlayerJoin(id int) {
+func (g *RPG) PlayerJoin(msg IncomingMessage) {
+	name := "ERROR"
+	nameParam, ok := msg.Data.Params["name"]
+	if ok {
+		nameStr, ok := nameParam.(string)
+		if ok {
+			name = nameStr
+		}
+	}
+
 	p := &Player{
-		Id:          id,
-		Name:        string(id),
+		Id:          msg.PlayerId,
+		Name:        name,
 		CurrentZone: "",
 		X:           0,
 		Y:           0,
 	}
 
-	g.Players[id] = p
+	g.Players[msg.PlayerId] = p
 	g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
 
 	g.Outgoing <- OutgoingMessage{
-		PlayerId: id,
+		PlayerId: msg.PlayerId,
 		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
 	}

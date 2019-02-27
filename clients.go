@@ -149,7 +149,8 @@ func (c *Client) Authenticate(password string) error {
 	game.Incoming <- rpg.IncomingMessage{
 		PlayerId: user.Id,
 		Data: rpg.IncomingMessageData{
-			Type: rpg.ACTION_JOIN,
+			Type:   rpg.ACTION_JOIN,
+			Params: map[string]interface{}{"name": user.Name},
 		},
 	}
 
