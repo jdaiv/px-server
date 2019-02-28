@@ -160,12 +160,13 @@ func (g *RPG) PlayerLeave(id int) {
 	if !ok {
 		return
 	}
+	zone := p.CurrentZone
 	SavePlayer(g.DB, p)
-	g.Zones[p.CurrentZone].RemovePlayer(p)
+	g.Zones[zone].RemovePlayer(p)
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: id,
-		Zone:     p.CurrentZone,
+		Zone:     zone,
 		Type:     ACTION_UPDATE,
 	}
 }
