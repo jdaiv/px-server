@@ -184,6 +184,8 @@ func main() {
 
 	<-c
 
+	game.SaveAllPlayers()
+
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()

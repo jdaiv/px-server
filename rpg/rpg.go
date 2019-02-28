@@ -128,16 +128,25 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		}
 	}
 
+	data, err := LoadPlayer(g.DB, msg.PlayerId)
+	if err != nil {
+		log.Printf("[rpg/player/join] error loading player: %v", err)
+	}
+
 	p := &Player{
-		Id:          msg.PlayerId,
-		Name:        name,
-		CurrentZone: "",
-		X:           0,
-		Y:           0,
+		Id:   msg.PlayerId,
+		Name: name,
+		X:    data.X,
+		Y:    data.Y,
 	}
 
 	g.Players[msg.PlayerId] = p
-	g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+
+	if _, hasZone := g.Zones[data.CurrentZone]; hasZone {
+		g.Zones[data.CurrentZone].AddPlayer(p, data.X, data.Y)
+	} else {
+		g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+	}
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: msg.PlayerId,
@@ -151,12 +160,19 @@ func (g *RPG) PlayerLeave(id int) {
 	if !ok {
 		return
 	}
+	SavePlayer(g.DB, p)
 	g.Zones[p.CurrentZone].RemovePlayer(p)
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: id,
 		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
+	}
+}
+
+func (g *RPG) SaveAllPlayers() {
+	for _, p := range g.Players {
+		SavePlayer(g.DB, p)
 	}
 }
 

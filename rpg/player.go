@@ -3,7 +3,6 @@ package rpg
 type Player struct {
 	Id        int         `json:"id"`
 	Name      string      `json:"name"`
-	Money     int         `json:"money"`
 	Slots     PlayerSlots `json:"slots"`
 	Inventory []*Item     `json:"inventory"`
 
@@ -23,6 +22,7 @@ type PlayerSlots struct {
 }
 
 type Item struct {
+	Id         int      `json:"-"`
 	Data       ItemData `json:"data"`
 	Qty        int      `json:"qty"`
 	Durability int      `json:"durability"`
