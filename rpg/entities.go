@@ -143,5 +143,6 @@ func TakeItem(ent *Entity, player *Player) (bool, error) {
 
 func AttackDummy(ent *Entity, player *Player) (bool, error) {
 	ent.Zone.SendEffect("wood_ex", ent.X, ent.Y)
+	ent.Zone.SendEffect("screen_shake", 16, 16)
 	return true, nil
 }
