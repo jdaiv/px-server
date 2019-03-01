@@ -1,6 +1,7 @@
 package rpg
 
 import (
+	"errors"
 	"log"
 )
 
@@ -15,6 +16,7 @@ type Zone struct {
 	EntityCount  int
 	Entities     map[int]*Entity
 	Players      map[int]*Player
+	Items        map[int]*Item
 
 	DisplayData ZoneDisplayData
 }
@@ -25,6 +27,7 @@ type ZoneDisplayData struct {
 	Map      []Tile                    `json:"map"`
 	Entities []EntityInfo              `json:"entities"`
 	Players  map[int]PlayerDisplayData `json:"players"`
+	Items    map[int]ItemInfo          `json:"items"`
 }
 
 func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
@@ -43,6 +46,7 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 		CollisionMap: make([]bool, def.Width*def.Height),
 		Players:      make(map[int]*Player),
 		Entities:     make(map[int]*Entity),
+		Items:        parent.GetItemsForZone(name),
 	}
 
 	for _, e := range def.Entity {
@@ -75,12 +79,17 @@ func (z *Zone) BuildDisplayData() {
 		p.UpdateDisplay()
 		players[p.Id] = p.DisplayData
 	}
+	items := make(map[int]ItemInfo)
+	for id, i := range z.Items {
+		items[id] = i.GetInfo()
+	}
 	z.DisplayData = ZoneDisplayData{
 		Width:    z.Width,
 		Height:   z.Height,
 		Map:      z.Map,
 		Entities: entities,
 		Players:  players,
+		Items:    items,
 	}
 }
 
@@ -88,7 +97,7 @@ func (z *Zone) AddEntity(def ZoneEntityDef, updateCollisions bool) {
 	id := z.EntityCount
 	ent, err := NewEntity(z, id, def)
 	if err != nil {
-		log.Printf("[rpg/zone/create/%s] error creating entity '%s': %v", z.Name, def.Type, err)
+		log.Printf("[rpg/zone/%s/create] error creating entity '%s': %v", z.Name, def.Type, err)
 		return
 	}
 	z.Entities[id] = ent
@@ -102,6 +111,36 @@ func (z *Zone) AddEntity(def ZoneEntityDef, updateCollisions bool) {
 func (z *Zone) RemoveEntity(entId int) {
 	delete(z.Entities, entId)
 	z.BuildCollisionMap()
+}
+
+func (z *Zone) AddItem(itemType string, x, y int) (*Item, error) {
+	def, ok := z.Parent.Defs.Items[itemType]
+	if !ok {
+		log.Printf("[rpg/zone/%s/createitem] item doesn't exist '%s'", z.Name, itemType)
+		return nil, errors.New("item doesn't exist")
+	}
+
+	item, err := z.Parent.NewItem(def)
+	if err != nil {
+		log.Printf("[rpg/zone/%s/createitem] error creating item '%s': %v", z.Name, itemType, err)
+		return nil, errors.New("db error")
+	}
+
+	item.X = x
+	item.Y = y
+	item.CurrentZone = z.Name
+	if err := item.Save(); err != nil {
+		log.Printf("[rpg/zone/%s/createitem] error updating item '%s': %v", z.Name, itemType, err)
+		return item, errors.New("db error")
+	}
+
+	z.Items[item.Id] = item
+	return item, nil
+}
+
+func (z *Zone) RemoveItem(item *Item) {
+	item.CurrentZone = ""
+	delete(z.Items, item.Id)
 }
 
 func (z *Zone) SendMessage(player *Player, text string) {
@@ -232,6 +271,33 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 	}
 
 	return needsUpdate
+}
+
+func (z *Zone) TakeItem(player *Player, itemId int) bool {
+	if player.CurrentZone != z.Name {
+		return false
+	}
+
+	item, ok := z.Items[itemId]
+	if !ok {
+		log.Printf("[rpg/zone/%s/take_item] couldn't find item %d", z.Name, itemId)
+		return false
+	}
+
+	if intAbs(int64(item.X-player.X)) > 1 || intAbs(int64(item.X-player.X)) > 1 {
+		log.Printf("[rpg/zone/%s/take_item] player %d tried to take item %d but was too far away", z.Name, player.Id, itemId)
+		return false
+	}
+
+	log.Printf("[rpg/zone/%s/take_item] grabbing item %d", z.Name, itemId)
+
+	err := item.Give(player)
+	if err != nil {
+		log.Printf("[rpg/zone/%s/take_item] failed to update item %d: %v", z.Name, itemId, err)
+	}
+	delete(z.Items, itemId)
+
+	return true
 }
 
 // thanks http://cavaliercoder.com/blog/optimized-abs-for-int64-in-go.html

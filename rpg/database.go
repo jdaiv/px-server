@@ -38,6 +38,29 @@ func (d *PersistantPlayerData) Scan(src interface{}) error {
 	return nil
 }
 
+func (d Item) Value() (driver.Value, error) {
+	j, err := json.Marshal(d)
+	return j, err
+}
+
+func (d *Item) Scan(src interface{}) error {
+	if src == nil {
+		return nil
+	}
+
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprintf("Type assertion .([]byte) failed. Actual: %T", src))
+	}
+
+	err := json.Unmarshal(source, d)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func LoadPlayer(db *sql.DB, id int) (PersistantPlayerData, error) {
 	player := PersistantPlayerData{}
 
@@ -46,7 +69,8 @@ func LoadPlayer(db *sql.DB, id int) (PersistantPlayerData, error) {
 	if err != nil {
 		log.Printf("SQL Error: %v", err)
 		if err == sql.ErrNoRows {
-			return player, errors.New("player not found")
+			// if we don't find any rows, player must be new
+			return player, nil
 		}
 		return player, err
 	}

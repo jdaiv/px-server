@@ -9,6 +9,7 @@ type RPG struct {
 	Defs    *Definitions
 	Zones   map[string]*Zone
 	Players map[int]*Player
+	Items   map[int]*Item
 
 	Incoming chan IncomingMessage
 	Outgoing chan OutgoingMessage
@@ -34,7 +35,7 @@ type IncomingMessageData struct {
 
 type DisplayData struct {
 	Zone   ZoneDisplayData `json:"zone"`
-	Player Player          `json:"player"`
+	Player PlayerInfo      `json:"player"`
 }
 
 func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
@@ -47,6 +48,7 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 		Defs:     defs,
 		Zones:    make(map[string]*Zone),
 		Players:  make(map[int]*Player),
+		Items:    make(map[int]*Item),
 		Incoming: make(chan IncomingMessage),
 		Outgoing: make(chan OutgoingMessage),
 		DB:       db,
@@ -87,6 +89,8 @@ func (g *RPG) HandleMessages() {
 			g.PlayerMove(incoming)
 		case ACTION_USE:
 			g.PlayerUse(incoming)
+		case ACTION_TAKE_ITEM:
+			g.PlayerTakeItem(incoming)
 		}
 	}
 }
@@ -109,7 +113,7 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 	}
 
 	return DisplayData{
-		Player: *p,
+		Player: p.GetInfo(),
 		Zone:   zone.DisplayData,
 	}
 }
@@ -139,6 +143,8 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		X:    data.X,
 		Y:    data.Y,
 	}
+
+	g.LoadItemsForPlayer(p)
 
 	g.Players[msg.PlayerId] = p
 
@@ -240,6 +246,40 @@ func (g *RPG) PlayerUse(msg IncomingMessage) {
 				Zone: oldZone,
 				Type: ACTION_UPDATE,
 			}
+		}
+	}
+}
+
+func (g *RPG) PlayerTakeItem(msg IncomingMessage) {
+	p, ok := g.Players[msg.PlayerId]
+	if !ok {
+		log.Printf("couldn't find player %d", msg.PlayerId)
+		return
+	}
+
+	zone, ok := g.Zones[p.CurrentZone]
+	if !ok {
+		log.Printf("couldn't find zone %s", p.CurrentZone)
+		return
+	}
+
+	entIdParam, ok := msg.Data.Params["id"]
+	if !ok {
+		log.Println("couldn't find ent id param")
+		return
+	}
+
+	entId, ok := entIdParam.(float64)
+	if !ok {
+		log.Println("ent id param not number")
+		return
+	}
+
+	if zone.TakeItem(p, int(entId)) {
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: msg.PlayerId,
+			Zone:     p.CurrentZone,
+			Type:     ACTION_UPDATE,
 		}
 	}
 }

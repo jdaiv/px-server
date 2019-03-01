@@ -115,10 +115,10 @@ func UseDoor(ent *Entity, player *Player) (bool, error) {
 }
 
 func SpawnItem(ent *Entity, player *Player) (bool, error) {
-	// targetZone, ok := ent.Def.Strings["target_zone"]
-	// if !ok {
-	// 	return false, errors.New("target zone not found")
-	// }
+	itemType, ok := ent.Def.Strings["item_id"]
+	if !ok {
+		return false, errors.New("target zone not found")
+	}
 	x, ok := ent.Def.Ints["x"]
 	if !ok {
 		return false, errors.New("x not found")
@@ -128,10 +128,7 @@ func SpawnItem(ent *Entity, player *Player) (bool, error) {
 		return false, errors.New("y not found")
 	}
 
-	ent.Zone.AddEntity(ZoneEntityDef{
-		Type:     "item_bag",
-		Position: Position{x, y},
-	}, true)
+	ent.Zone.AddItem(itemType, x, y)
 
 	return true, nil
 }

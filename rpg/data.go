@@ -71,7 +71,7 @@ type ItemDef struct {
 
 type ItemModDef struct {
 	Name  string
-	Stats map[string]float64
+	Stats map[string]int
 }
 
 type SkillDef struct {
