@@ -91,6 +91,12 @@ func (g *RPG) HandleMessages() {
 			g.PlayerUse(incoming)
 		case ACTION_TAKE_ITEM:
 			g.PlayerTakeItem(incoming)
+		case ACTION_EQUIP_ITEM:
+			g.PlayerEquipItem(incoming)
+		case ACTION_UNEQUIP_ITEM:
+			g.PlayerUnequipItem(incoming)
+		case ACTION_DROP_ITEM:
+			g.PlayerDropItem(incoming)
 		}
 	}
 }
@@ -265,17 +271,107 @@ func (g *RPG) PlayerTakeItem(msg IncomingMessage) {
 
 	entIdParam, ok := msg.Data.Params["id"]
 	if !ok {
-		log.Println("couldn't find ent id param")
+		log.Println("couldn't find item id param")
 		return
 	}
 
 	entId, ok := entIdParam.(float64)
 	if !ok {
-		log.Println("ent id param not number")
+		log.Println("item id param not number")
 		return
 	}
 
 	if zone.TakeItem(p, int(entId)) {
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: msg.PlayerId,
+			Zone:     p.CurrentZone,
+			Type:     ACTION_UPDATE,
+		}
+	}
+}
+
+func (g *RPG) PlayerEquipItem(msg IncomingMessage) {
+	p, ok := g.Players[msg.PlayerId]
+	if !ok {
+		log.Printf("couldn't find player %d", msg.PlayerId)
+		return
+	}
+
+	itemIdParam, ok := msg.Data.Params["id"]
+	if !ok {
+		log.Println("couldn't find item id param")
+		return
+	}
+
+	itemId, ok := itemIdParam.(float64)
+	if !ok {
+		log.Println("item id param not number")
+		return
+	}
+
+	if p.EquipItem(int(itemId)) {
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: msg.PlayerId,
+			Zone:     p.CurrentZone,
+			Type:     ACTION_UPDATE,
+		}
+	}
+}
+
+func (g *RPG) PlayerUnequipItem(msg IncomingMessage) {
+	p, ok := g.Players[msg.PlayerId]
+	if !ok {
+		log.Printf("couldn't find player %d", msg.PlayerId)
+		return
+	}
+
+	slotParam, ok := msg.Data.Params["slot"]
+	if !ok {
+		log.Println("couldn't find item slot param")
+		return
+	}
+
+	slot, ok := slotParam.(string)
+	if !ok {
+		log.Println("item slot param not number")
+		return
+	}
+
+	if p.UnequipItem(slot) {
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: msg.PlayerId,
+			Zone:     p.CurrentZone,
+			Type:     ACTION_UPDATE,
+		}
+	}
+}
+
+func (g *RPG) PlayerDropItem(msg IncomingMessage) {
+	p, ok := g.Players[msg.PlayerId]
+	if !ok {
+		log.Printf("couldn't find player %d", msg.PlayerId)
+		return
+	}
+
+	zone, ok := g.Zones[p.CurrentZone]
+	if !ok {
+		log.Printf("couldn't find zone %s", p.CurrentZone)
+		return
+	}
+
+	itemIdParam, ok := msg.Data.Params["id"]
+	if !ok {
+		log.Println("couldn't find ent id param")
+		return
+	}
+
+	itemId, ok := itemIdParam.(float64)
+	if !ok {
+		log.Println("item id param not number")
+		return
+	}
+
+	if p.DropItem(zone, int(itemId)) {
 		g.Outgoing <- OutgoingMessage{
 			PlayerId: msg.PlayerId,
 			Zone:     p.CurrentZone,

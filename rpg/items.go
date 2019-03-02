@@ -122,7 +122,7 @@ func (g *RPG) LoadItemsForPlayer(player *Player) {
 		player.Slots[s] = nil
 	}
 
-	rows, err := g.DB.Query(`SELECT id, data FROM items WHERE data->>'heldBy' = $1`, player.Id)
+	rows, err := g.DB.Query(`SELECT id, data FROM items WHERE data->>'held' = 'true' AND data->>'heldBy' = $1`, player.Id)
 
 	if err != nil {
 		log.Printf("SQL Error: %v", err)

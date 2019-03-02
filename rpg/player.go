@@ -16,18 +16,20 @@ type Player struct {
 }
 
 type PlayerDisplayData struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	X    int    `json:"x"`
-	Y    int    `json:"y"`
+	Id    int                 `json:"id"`
+	Name  string              `json:"name"`
+	Slots map[string]ItemInfo `json:"slots"`
+	X     int                 `json:"x"`
+	Y     int                 `json:"y"`
 }
 
 func (p *Player) UpdateDisplay() {
 	p.DisplayData = PlayerDisplayData{
-		Id:   p.Id,
-		Name: p.Name,
-		X:    p.X,
-		Y:    p.Y,
+		Id:    p.Id,
+		Name:  p.Name,
+		Slots: p.GetInfo().Slots,
+		X:     p.X,
+		Y:     p.Y,
 	}
 }
 
@@ -39,6 +41,60 @@ type PlayerInfo struct {
 
 	X int `json:"x"`
 	Y int `json:"y"`
+}
+
+func (p *Player) EquipItem(itemId int) bool {
+	item, ok := p.Inventory[itemId]
+	if !ok || item == nil {
+		return false
+	}
+
+	targetSlot := ""
+	switch item.Type {
+	case "helmet":
+		targetSlot = "head"
+	}
+
+	if targetSlot == "" {
+		return false
+	}
+
+	if _, equipped := p.Slots[targetSlot]; equipped {
+		p.UnequipItem(targetSlot)
+	}
+
+	item.Equipped = targetSlot
+	delete(p.Inventory, item.Id)
+	p.Slots[targetSlot] = item
+	item.Save()
+
+	return true
+}
+
+func (p *Player) UnequipItem(slot string) bool {
+	item, ok := p.Slots[slot]
+	if !ok || item == nil {
+		return false
+	}
+
+	item.Equipped = ""
+	p.Inventory[item.Id] = item
+	p.Slots[slot] = nil
+	item.Save()
+
+	return true
+}
+
+func (p *Player) DropItem(zone *Zone, itemId int) bool {
+	item, ok := p.Inventory[itemId]
+	if !ok {
+		return false
+	}
+
+	delete(p.Inventory, itemId)
+	zone.AddExistingItem(item, p.X, p.Y)
+
+	return true
 }
 
 func (p *Player) GetInfo() PlayerInfo {

@@ -130,12 +130,26 @@ func (z *Zone) AddItem(itemType string, x, y int) (*Item, error) {
 	item.Y = y
 	item.CurrentZone = z.Name
 	if err := item.Save(); err != nil {
-		log.Printf("[rpg/zone/%s/createitem] error updating item '%s': %v", z.Name, itemType, err)
+		log.Printf("[rpg/zone/%s/createitem] error updating item %d: %v", z.Name, item.Id, err)
 		return item, errors.New("db error")
 	}
 
 	z.Items[item.Id] = item
 	return item, nil
+}
+
+func (z *Zone) AddExistingItem(item *Item, x, y int) error {
+	item.Held = false
+	item.X = x
+	item.Y = y
+	item.CurrentZone = z.Name
+	if err := item.Save(); err != nil {
+		log.Printf("[rpg/zone/%s/createitem] error updating item %d: %v", z.Name, item.Id, err)
+		return errors.New("db error")
+	}
+
+	z.Items[item.Id] = item
+	return nil
 }
 
 func (z *Zone) RemoveItem(item *Item) {
