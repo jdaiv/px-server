@@ -63,6 +63,7 @@ type ZoneEntityDef struct {
 type ItemDef struct {
 	Name       string
 	Type       string
+	Quality    int
 	MaxQty     int
 	Durability int
 	Special    []string

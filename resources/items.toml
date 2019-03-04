@@ -1,5 +1,6 @@
 
 [sunglasses]
+Quality = 1
 Name = 'Sunglasses'
 Type = 'helmet'
 MaxQty = 1
@@ -10,9 +11,19 @@ cool = 99
 [sunglasses.stats]
 armor = 0
 
+[sword]
+Quality = 2
+Name = 'sword'
+Type = 'melee'
+MaxQty = 1
+Durability = 9999
+[sword.stats]
+attack = 5
+
 [potion]
-Name = 'Sunglasses'
-Type = 'helmet'
+Quality = 1
+Name = 'Potion'
+Type = 'consumable'
 MaxQty = 1
 Durability = 9999
 Special = ['consumable']

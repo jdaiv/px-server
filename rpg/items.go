@@ -10,6 +10,7 @@ type Item struct {
 	Parent *RPG `json:"-"`
 
 	Id           int            `json:"id"`
+	Quality      int            `json:"quality"`
 	Name         string         `json:"name"`
 	Type         string         `json:"type"`
 	MaxQty       int            `json:"maxQty"`
@@ -28,6 +29,7 @@ type Item struct {
 
 type ItemInfo struct {
 	Id           int            `json:"id"`
+	Quality      int            `json:"quality"`
 	Name         string         `json:"name"`
 	Type         string         `json:"type"`
 	Durability   int            `json:"durability"`
@@ -41,6 +43,7 @@ type ItemInfo struct {
 func (g *RPG) NewItem(def ItemDef) (*Item, error) {
 	item := &Item{
 		Parent:       g,
+		Quality:      def.Quality,
 		Name:         def.Name,
 		Type:         def.Type,
 		MaxQty:       def.MaxQty,
@@ -190,6 +193,7 @@ func (i *Item) GetInfo() ItemInfo {
 	return ItemInfo{
 		Id:           i.Id,
 		Name:         i.Name,
+		Quality:      i.Quality,
 		Type:         i.Type,
 		Durability:   i.Durability,
 		SpecialAttrs: i.SpecialAttrs,

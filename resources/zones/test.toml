@@ -26,3 +26,13 @@ y = 3
 [[Entity]]
 Type = 'dummy'
 Position = [3, 3]
+
+[[Entity]]
+Name = 'item spawner'
+Type = 'item_spawner'
+Position = [2, 0]
+[Entity.Strings]
+item_id = 'sword'
+[Entity.Ints]
+x = 2
+y = 1

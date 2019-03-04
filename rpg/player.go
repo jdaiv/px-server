@@ -53,6 +53,8 @@ func (p *Player) EquipItem(itemId int) bool {
 	switch item.Type {
 	case "helmet":
 		targetSlot = "head"
+	case "melee":
+		targetSlot = "rhand"
 	}
 
 	if targetSlot == "" {
