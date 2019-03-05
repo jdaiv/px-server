@@ -1,6 +1,7 @@
 package rpg
 
 import (
+	"log"
 	"math/rand"
 )
 
@@ -20,12 +21,14 @@ type CombatInfo struct {
 
 func (z *Zone) CheckCombat() bool {
 	oldVal := z.CombatInfo.InCombat
-	z.CombatInfo.InCombat = false
+
+	hostiles := false
 	for _, n := range z.NPCs {
 		if n.Alignment == "hostile" {
-			z.CombatInfo.InCombat = true
+			hostiles = true
 		}
 	}
+	z.CombatInfo.InCombat = /* len(z.Players) > 0 &&  */ hostiles
 
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
@@ -56,8 +59,14 @@ func (z *Zone) StartCombat() {
 func (z *Zone) CheckCombatants() {
 	updatedCombatants := make([]CombatInfo, 0)
 	changed := false
+	currentChanged := false
+	current := z.CombatInfo.Combatants[z.CombatInfo.Current]
+	currentIdx := z.CombatInfo.Current
+	needNewCurrent := false
+	count := 0
 	for _, info := range z.CombatInfo.Combatants {
 		exists := false
+		isCurrent := info.IsPlayer == current.IsPlayer && info.Id == current.Id
 		if info.IsPlayer {
 			for id := range z.Players {
 				if id == info.Id {
@@ -75,14 +84,33 @@ func (z *Zone) CheckCombatants() {
 		}
 
 		if exists {
+			if isCurrent || needNewCurrent {
+				currentChanged = needNewCurrent
+				needNewCurrent = false
+				currentIdx = count
+			}
 			updatedCombatants = append(updatedCombatants, info)
+			count += 1
 		} else {
+			if isCurrent {
+				needNewCurrent = true
+				log.Printf("current combatant in zone %s left", z.Name)
+			}
 			changed = true
 		}
 	}
 
 	if changed {
+		// actor was last in list
+		if needNewCurrent {
+			currentIdx = 0
+			currentChanged = true
+		}
+		z.CombatInfo.Current = currentIdx
 		z.CombatInfo.Combatants = updatedCombatants
+		if currentChanged {
+			z.CombatInfo.Combatants[currentIdx].Actor.NewTurn()
+		}
 	}
 
 	for _, p := range z.Players {
@@ -137,7 +165,7 @@ func (z *Zone) NextCombatant() {
 
 func (z *Zone) CombatTick() bool {
 	ci := z.CombatInfo
-	if len(ci.Combatants) < 0 {
+	if len(ci.Combatants) <= 0 {
 		return false
 	}
 
