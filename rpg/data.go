@@ -13,6 +13,7 @@ type Definitions struct {
 	Zones    map[string]ZoneDef
 	Tiles    map[string]TileDef
 	Entities map[string]EntityDef
+	NPCs     map[string]NPCDef
 	Items    map[string]ItemDef
 	ItemMods map[string]ItemModDef
 	Skills   map[string]SkillDef
@@ -33,6 +34,7 @@ type ZoneDef struct {
 	Height     int
 	Map        []string
 	Entity     []ZoneEntityDef
+	NPC        []ZoneNPCDef
 }
 
 type TileDef struct {
@@ -51,6 +53,11 @@ type EntityDef struct {
 	Ints        []string
 }
 
+type NPCDef struct {
+	Alignment string
+	Logic     string
+}
+
 type ZoneEntityDef struct {
 	Ref      string
 	Name     string
@@ -58,6 +65,13 @@ type ZoneEntityDef struct {
 	Position Position
 	Strings  map[string]string
 	Ints     map[string]int
+}
+
+type ZoneNPCDef struct {
+	Ref      string
+	Name     string
+	Type     string
+	Position Position
 }
 
 type ItemDef struct {
@@ -94,6 +108,11 @@ func LoadDefinitions(dir string) (*Definitions, error) {
 
 	if _, err := toml.DecodeFile(dir+"entities.toml", &def.Entities); err != nil {
 		log.Printf("[rpg/definitions] error loading tile definitions: %v", err)
+		return nil, err
+	}
+
+	if _, err := toml.DecodeFile(dir+"npcs.toml", &def.NPCs); err != nil {
+		log.Printf("[rpg/definitions] error loading npc definitions: %v", err)
 		return nil, err
 	}
 

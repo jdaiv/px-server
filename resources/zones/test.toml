@@ -36,3 +36,8 @@ item_id = 'sword'
 [Entity.Ints]
 x = 2
 y = 1
+
+[[NPC]]
+Name = 'bolb'
+Type = 'blob'
+Position = [4, 1]

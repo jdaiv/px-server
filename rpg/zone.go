@@ -14,7 +14,9 @@ type Zone struct {
 	Map          []Tile
 	CollisionMap []bool
 	EntityCount  int
+	NPCCount     int
 	Entities     map[int]*Entity
+	NPCs         map[int]*NPC
 	Players      map[int]*Player
 	Items        map[int]*Item
 
@@ -27,6 +29,7 @@ type ZoneDisplayData struct {
 	Map      []Tile                    `json:"map"`
 	Entities []EntityInfo              `json:"entities"`
 	Players  map[int]PlayerDisplayData `json:"players"`
+	NPCs     map[int]NPCInfo           `json:"npcs"`
 	Items    map[int]ItemInfo          `json:"items"`
 }
 
@@ -45,12 +48,17 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 		Map:          tileMap,
 		CollisionMap: make([]bool, def.Width*def.Height),
 		Players:      make(map[int]*Player),
+		NPCs:         make(map[int]*NPC),
 		Entities:     make(map[int]*Entity),
 		Items:        parent.GetItemsForZone(name),
 	}
 
 	for _, e := range def.Entity {
 		zone.AddEntity(e, false)
+	}
+
+	for _, n := range def.NPC {
+		zone.AddNPC(n, false)
 	}
 
 	zone.BuildCollisionMap()
@@ -83,6 +91,10 @@ func (z *Zone) BuildDisplayData() {
 	for id, i := range z.Items {
 		items[id] = i.GetInfo()
 	}
+	npcs := make(map[int]NPCInfo)
+	for id, n := range z.NPCs {
+		npcs[id] = n.GetInfo()
+	}
 	z.DisplayData = ZoneDisplayData{
 		Width:    z.Width,
 		Height:   z.Height,
@@ -90,6 +102,7 @@ func (z *Zone) BuildDisplayData() {
 		Entities: entities,
 		Players:  players,
 		Items:    items,
+		NPCs:     npcs,
 	}
 }
 
@@ -110,6 +123,26 @@ func (z *Zone) AddEntity(def ZoneEntityDef, updateCollisions bool) {
 
 func (z *Zone) RemoveEntity(entId int) {
 	delete(z.Entities, entId)
+	z.BuildCollisionMap()
+}
+
+func (z *Zone) AddNPC(def ZoneNPCDef, updateCollisions bool) {
+	id := z.NPCCount
+	npc, err := NewNPC(z, id, def)
+	if err != nil {
+		log.Printf("[rpg/zone/%s/createnpc] error creating npc '%s': %v", z.Name, def.Type, err)
+		return
+	}
+	z.NPCs[id] = npc
+	z.NPCCount += 1
+
+	if updateCollisions {
+		z.BuildCollisionMap()
+	}
+}
+
+func (z *Zone) RemoveNPC(npcId int) {
+	delete(z.NPCs, npcId)
 	z.BuildCollisionMap()
 }
 
