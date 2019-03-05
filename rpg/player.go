@@ -12,6 +12,9 @@ type Player struct {
 	X           int    `json:"-"`
 	Y           int    `json:"-"`
 
+	HP int `json:"hp"`
+	AP int `json:"ap"`
+
 	DisplayData PlayerDisplayData `json:"-"`
 }
 
@@ -21,6 +24,7 @@ type PlayerDisplayData struct {
 	Slots map[string]ItemInfo `json:"slots"`
 	X     int                 `json:"x"`
 	Y     int                 `json:"y"`
+	HP    int                 `json:"hp"`
 }
 
 func (p *Player) UpdateDisplay() {
@@ -30,6 +34,7 @@ func (p *Player) UpdateDisplay() {
 		Slots: p.GetInfo().Slots,
 		X:     p.X,
 		Y:     p.Y,
+		HP:    p.HP,
 	}
 }
 
@@ -41,6 +46,9 @@ type PlayerInfo struct {
 
 	X int `json:"x"`
 	Y int `json:"y"`
+
+	HP int `json:"hp"`
+	AP int `json:"ap"`
 }
 
 func (p *Player) EquipItem(itemId int) bool {
@@ -121,5 +129,7 @@ func (p *Player) GetInfo() PlayerInfo {
 		Inventory: inv,
 		X:         p.X,
 		Y:         p.Y,
+		HP:        p.HP,
+		AP:        p.AP,
 	}
 }

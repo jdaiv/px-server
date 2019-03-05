@@ -29,6 +29,16 @@ UseFunc = 'spawn_item'
 Strings = ['item_id']
 Ints = ['x', 'y']
 
+[npc_spawner]
+DefaultName = 'NPC_SPAWNER_DEFAULT_NAME'
+Size = [1, 1]
+Usable = true
+UseText = 'activate'
+Blocking = true
+UseFunc = 'spawn_npc'
+Strings = ['npc_id']
+Ints = ['x', 'y']
+
 [item_bag]
 DefaultName = 'item bag'
 Size = [1, 1]

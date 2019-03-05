@@ -13,6 +13,9 @@ type PersistantPlayerData struct {
 	CurrentZone string `json:"currentZone"`
 	X           int    `json:"x"`
 	Y           int    `json:"y"`
+
+	HP int `json:"hp"`
+	AP int `json:"ap"`
 }
 
 func (d PersistantPlayerData) Value() (driver.Value, error) {
@@ -83,6 +86,8 @@ func SavePlayer(db *sql.DB, player *Player) error {
 		CurrentZone: player.CurrentZone,
 		X:           player.X,
 		Y:           player.Y,
+		HP:          player.HP,
+		AP:          player.AP,
 	}
 	_, err := db.Exec(`UPDATE players SET data = $1 WHERE id = $2`, data, player.Id)
 	if err != nil {

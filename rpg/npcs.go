@@ -2,14 +2,23 @@ package rpg
 
 import (
 	"errors"
+	"log"
+	"math/rand"
 )
 
-var npcLogicFuncs = map[string]func(*Entity, *Player) (bool, error){
-	"use_sign":     UseSign,
-	"use_door":     UseDoor,
-	"spawn_item":   SpawnItem,
-	"take_item":    TakeItem,
-	"attack_dummy": AttackDummy,
+var dirMap = map[int]string{
+	0: "N",
+	1: "S",
+	2: "E",
+	3: "W",
+}
+
+var npcLogicFuncs = map[string]func(*NPC) bool{
+	"blob": BlobIdle,
+}
+
+var npcCombatLogicFuncs = map[string]func(*NPC) bool{
+	"blob": BlobCombat,
 }
 
 type NPCInfo struct {
@@ -28,6 +37,7 @@ type NPC struct {
 	Type      string
 	X         int
 	Y         int
+	HP        int
 	Alignment string
 	Logic     string
 }
@@ -48,6 +58,7 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 		Type:      def.Type,
 		X:         def.Position[0],
 		Y:         def.Position[1],
+		HP:        10,
 		Alignment: npcDef.Alignment,
 		Logic:     npcDef.Logic,
 	}, nil
@@ -62,4 +73,24 @@ func (n *NPC) GetInfo() NPCInfo {
 		Y:         n.Y,
 		Alignment: n.Alignment,
 	}
+}
+
+func (n *NPC) CombatTick() {
+	fn, ok := npcCombatLogicFuncs[n.Logic]
+	if !ok {
+		log.Printf("entity '%s' combat logic missing", n.Type)
+		return
+	}
+	fn(n)
+}
+
+func BlobIdle(self *NPC) bool {
+	return false
+}
+
+func BlobCombat(self *NPC) bool {
+	x, y, ok := self.Zone.Move(self.X, self.Y, dirMap[rand.Intn(4)])
+	self.X = x
+	self.Y = y
+	return ok
 }

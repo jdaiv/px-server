@@ -11,6 +11,7 @@ var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 	"use_sign":     UseSign,
 	"use_door":     UseDoor,
 	"spawn_item":   SpawnItem,
+	"spawn_npc":    SpawnNPC,
 	"take_item":    TakeItem,
 	"attack_dummy": AttackDummy,
 }
@@ -117,7 +118,7 @@ func UseDoor(ent *Entity, player *Player) (bool, error) {
 func SpawnItem(ent *Entity, player *Player) (bool, error) {
 	itemType, ok := ent.Def.Strings["item_id"]
 	if !ok {
-		return false, errors.New("target zone not found")
+		return false, errors.New("target item not found")
 	}
 	x, ok := ent.Def.Ints["x"]
 	if !ok {
@@ -129,6 +130,29 @@ func SpawnItem(ent *Entity, player *Player) (bool, error) {
 	}
 
 	ent.Zone.AddItem(itemType, x, y)
+
+	return true, nil
+}
+
+func SpawnNPC(ent *Entity, player *Player) (bool, error) {
+	npcType, ok := ent.Def.Strings["npc_id"]
+	if !ok {
+		return false, errors.New("target npc not found")
+	}
+	x, ok := ent.Def.Ints["x"]
+	if !ok {
+		return false, errors.New("x not found")
+	}
+	y, ok := ent.Def.Ints["y"]
+	if !ok {
+		return false, errors.New("y not found")
+	}
+
+	ent.Zone.AddNPC(ZoneNPCDef{
+		Name:     "SPAWNED_NPC",
+		Position: Position{x, y},
+		Type:     npcType,
+	}, true)
 
 	return true, nil
 }

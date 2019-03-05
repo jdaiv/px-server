@@ -152,14 +152,12 @@ func main() {
 		}
 	}()
 
-	t := time.Now()
 	go func() {
 		for {
-			_t := time.Now()
-			dt := _t.Sub(t).Seconds()
-			t = _t
-			game.Tick(dt)
-			time.Sleep(500 * time.Millisecond)
+			game.Incoming <- rpg.IncomingMessage{
+				Data: rpg.IncomingMessageData{Type: rpg.ACTION_TICK},
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 	}()
 

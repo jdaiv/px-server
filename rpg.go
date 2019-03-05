@@ -23,6 +23,10 @@ func handleGameAction(source *Client, data []byte) (interface{}, error) {
 		return nil, err
 	}
 
+	if legal, ok := rpg.PlayerIncomingActions[msg.Type]; !legal || !ok {
+		return nil, nil
+	}
+
 	game.Incoming <- rpg.IncomingMessage{PlayerId: source.User.Id, Data: msg}
 
 	return nil, nil

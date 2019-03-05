@@ -20,17 +20,19 @@ type Zone struct {
 	Players      map[int]*Player
 	Items        map[int]*Item
 
+	CombatInfo  *ZoneCombatData
 	DisplayData ZoneDisplayData
 }
 
 type ZoneDisplayData struct {
-	Width    int                       `json:"width"`
-	Height   int                       `json:"height"`
-	Map      []Tile                    `json:"map"`
-	Entities []EntityInfo              `json:"entities"`
-	Players  map[int]PlayerDisplayData `json:"players"`
-	NPCs     map[int]NPCInfo           `json:"npcs"`
-	Items    map[int]ItemInfo          `json:"items"`
+	Width      int                       `json:"width"`
+	Height     int                       `json:"height"`
+	Map        []Tile                    `json:"map"`
+	Entities   []EntityInfo              `json:"entities"`
+	Players    map[int]PlayerDisplayData `json:"players"`
+	NPCs       map[int]NPCInfo           `json:"npcs"`
+	Items      map[int]ItemInfo          `json:"items"`
+	CombatInfo ZoneCombatData            `json:"combatInfo"`
 }
 
 func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
@@ -51,19 +53,28 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 		NPCs:         make(map[int]*NPC),
 		Entities:     make(map[int]*Entity),
 		Items:        parent.GetItemsForZone(name),
+		CombatInfo:   &ZoneCombatData{},
 	}
 
 	for _, e := range def.Entity {
 		zone.AddEntity(e, false)
 	}
 
-	for _, n := range def.NPC {
-		zone.AddNPC(n, false)
-	}
-
 	zone.BuildCollisionMap()
 
+	for _, n := range def.NPC {
+		zone.AddNPC(n, true)
+	}
+
 	return zone
+}
+
+func (z *Zone) Tick() {
+	if z.CombatInfo.InCombat {
+		z.CombatTick()
+	} else {
+
+	}
 }
 
 func (z *Zone) BuildCollisionMap() {
@@ -74,6 +85,9 @@ func (z *Zone) BuildCollisionMap() {
 		if e.RootDef.Blocking {
 			z.CollisionMap[e.X+e.Y*z.Width] = true
 		}
+	}
+	for _, e := range z.NPCs {
+		z.CollisionMap[e.X+e.Y*z.Width] = true
 	}
 }
 
@@ -96,13 +110,14 @@ func (z *Zone) BuildDisplayData() {
 		npcs[id] = n.GetInfo()
 	}
 	z.DisplayData = ZoneDisplayData{
-		Width:    z.Width,
-		Height:   z.Height,
-		Map:      z.Map,
-		Entities: entities,
-		Players:  players,
-		Items:    items,
-		NPCs:     npcs,
+		Width:      z.Width,
+		Height:     z.Height,
+		Map:        z.Map,
+		Entities:   entities,
+		Players:    players,
+		Items:      items,
+		NPCs:       npcs,
+		CombatInfo: *z.CombatInfo,
 	}
 }
 
@@ -127,6 +142,11 @@ func (z *Zone) RemoveEntity(entId int) {
 }
 
 func (z *Zone) AddNPC(def ZoneNPCDef, updateCollisions bool) {
+	if z.CollisionMap[def.Position[0]+def.Position[1]*z.Width] {
+		log.Printf("[rpg/zone/%s/createnpc] can't create npc '%s': coords %d,%d blocked", z.Name, def.Type, def.Position[0], def.Position[1])
+		return
+	}
+
 	id := z.NPCCount
 	npc, err := NewNPC(z, id, def)
 	if err != nil {
@@ -139,11 +159,14 @@ func (z *Zone) AddNPC(def ZoneNPCDef, updateCollisions bool) {
 	if updateCollisions {
 		z.BuildCollisionMap()
 	}
+
+	z.CheckCombat()
 }
 
 func (z *Zone) RemoveNPC(npcId int) {
 	delete(z.NPCs, npcId)
 	z.BuildCollisionMap()
+	z.CheckCombat()
 }
 
 func (z *Zone) AddItem(itemType string, x, y int) (*Item, error) {
@@ -237,6 +260,7 @@ func (z *Zone) AddPlayer(player *Player, x, y int) {
 	}
 
 	z.Players[player.Id] = player
+	z.CheckCombat()
 }
 
 func (z *Zone) RemovePlayer(player *Player) {
@@ -246,6 +270,7 @@ func (z *Zone) RemovePlayer(player *Player) {
 
 	delete(z.Players, player.Id)
 	player.CurrentZone = ""
+	z.CheckCombat()
 }
 
 func (z *Zone) MovePlayer(player *Player, direction string) {
@@ -253,45 +278,60 @@ func (z *Zone) MovePlayer(player *Player, direction string) {
 		return
 	}
 
-	x := player.X
-	y := player.Y
-
-	switch direction {
-	case "N":
-		y += 1
-	case "S":
-		y -= 1
-	case "E":
-		x += 1
-	case "W":
-		x -= 1
-	}
-
-	if x < 0 {
-		x = 0
-	}
-	if x >= z.Width {
-		x = z.Width - 1
-	}
-	if y < 0 {
-		y = 0
-	}
-	if y >= z.Height {
-		y = z.Height - 1
-	}
-
-	if z.CollisionMap[x+y*z.Width] {
+	x, y, ok := z.Move(player.X, player.Y, direction)
+	if !ok {
 		return
 	}
 
+	if !z.CheckAPCost(player, 1) {
+		return
+	}
+	player.X = x
+	player.Y = y
+	z.PostPlayerAction(player)
+}
+
+func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
+	_x := x
+	_y := y
+
+	switch direction {
+	case "N":
+		_y += 1
+	case "S":
+		_y -= 1
+	case "E":
+		_x += 1
+	case "W":
+		_x -= 1
+	}
+
+	if _x < 0 {
+		_x = 0
+	}
+	if _x >= z.Width {
+		_x = z.Width - 1
+	}
+	if _y < 0 {
+		_y = 0
+	}
+	if _y >= z.Height {
+		_y = z.Height - 1
+	}
+
+	if z.CollisionMap[_x+_y*z.Width] {
+		_x = x
+		_y = y
+	}
+
 	for _, p := range z.Players {
-		if x == p.X && y == p.Y {
-			return
+		if _x == p.X && _y == p.Y {
+			_x = x
+			_y = y
 		}
 	}
 
-	player.X = x
-	player.Y = y
+	return _x, _y, (x != _x || y != _y)
 }
 
 func (z *Zone) UseItem(player *Player, entId int) bool {
@@ -312,10 +352,16 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 
 	log.Printf("[rpg/zone/%s/use] using ent %d", z.Name, entId)
 
+	if !z.CheckAPCost(player, 1) {
+		return false
+	}
+
 	needsUpdate, err := ent.Use(player)
 	if err != nil {
 		log.Printf("[rpg/zone/%s/use] failed to use ent %d (%s): %v", z.Name, entId, ent.Type, err)
 	}
+
+	z.PostPlayerAction(player)
 
 	return needsUpdate
 }
@@ -338,11 +384,17 @@ func (z *Zone) TakeItem(player *Player, itemId int) bool {
 
 	log.Printf("[rpg/zone/%s/take_item] grabbing item %d", z.Name, itemId)
 
+	if !z.CheckAPCost(player, 1) {
+		return false
+	}
+
 	err := item.Give(player)
 	if err != nil {
 		log.Printf("[rpg/zone/%s/take_item] failed to update item %d: %v", z.Name, itemId, err)
 	}
 	delete(z.Items, itemId)
+
+	z.PostPlayerAction(player)
 
 	return true
 }
