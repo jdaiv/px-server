@@ -28,7 +28,7 @@ func (z *Zone) CheckCombat() bool {
 			hostiles = true
 		}
 	}
-	z.CombatInfo.InCombat = /* len(z.Players) > 0 &&  */ hostiles
+	z.CombatInfo.InCombat = len(z.Players) > 0 && hostiles
 
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
