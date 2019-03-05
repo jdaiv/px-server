@@ -1,16 +1,18 @@
 
 SpawnPoint = [1, 1]
-Width = 6
-Height = 8
+Width = 10
+Height = 10
 Map = [
-    'default', 'default', 'default', 'default', 'default', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
+    'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
 ]
 
 [[Entity]]
@@ -25,7 +27,13 @@ y = 3
 
 [[Entity]]
 Type = 'dummy'
-Position = [3, 3]
+Position = [3, 5]
+[[Entity]]
+Type = 'dummy'
+Position = [5, 5]
+[[Entity]]
+Type = 'dummy'
+Position = [7, 5]
 
 [[Entity]]
 Name = 'item spawner'
