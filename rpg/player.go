@@ -1,6 +1,6 @@
 package rpg
 
-var playerSlots = []string{"head", "torso", "legs", "rhand", "lhand"}
+var playerSlots = []string{"head", "torso", "legs", "hands"}
 
 type Player struct {
 	Id        int              `json:"id"`
@@ -26,6 +26,7 @@ type PlayerDisplayData struct {
 	X     int                 `json:"x"`
 	Y     int                 `json:"y"`
 	HP    int                 `json:"hp"`
+	MaxHP int                 `json:"maxHP"`
 }
 
 func (p *Player) UpdateDisplay() {
@@ -49,7 +50,9 @@ type PlayerInfo struct {
 	Y int `json:"y"`
 
 	HP    int       `json:"hp"`
+	MaxHP int       `json:"maxHP"`
 	AP    int       `json:"ap"`
+	MaxAP int       `json:"maxAP"`
 	Stats StatBlock `json:"stats"`
 }
 
@@ -64,7 +67,9 @@ func (p *Player) EquipItem(itemId int) bool {
 	case "helmet":
 		targetSlot = "head"
 	case "melee":
-		targetSlot = "rhand"
+		fallthrough
+	case "ranged":
+		targetSlot = "hands"
 	}
 
 	if targetSlot == "" {
@@ -137,6 +142,8 @@ func (p *Player) GetInfo() PlayerInfo {
 		Y:         p.Y,
 		HP:        p.HP,
 		AP:        p.AP,
+		MaxHP:     p.Stats.MaxHP(),
+		MaxAP:     p.Stats.MaxAP(),
 		Stats:     p.Stats,
 	}
 }

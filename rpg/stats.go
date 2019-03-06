@@ -29,6 +29,14 @@ func (s *StatBlock) ApplyStat(stat string, value int) {
 	}
 }
 
+func (s StatBlock) MaxHP() int {
+	return 10
+}
+
+func (s StatBlock) MaxAP() int {
+	return 5 + s.Speed
+}
+
 func (p *Player) BuildStats() {
 	stats := StatBlock{}
 	for _, item := range p.Slots {
