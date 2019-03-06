@@ -182,6 +182,10 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 	g.LoadItemsForPlayer(p)
 	p.BuildStats()
 
+	if p.HP <= 0 {
+		p.HP = p.Stats.MaxHP()
+	}
+
 	g.Players[msg.PlayerId] = p
 
 	if _, hasZone := g.Zones[data.CurrentZone]; hasZone {
@@ -217,6 +221,28 @@ func (g *RPG) SaveAllPlayers() {
 	log.Printf("saving all players")
 	for _, p := range g.Players {
 		SavePlayer(g.DB, p)
+	}
+}
+
+func (g *RPG) KillPlayer(p *Player) {
+	g.Zones[p.CurrentZone].AddEntity(ZoneEntityDef{
+		Name:     "corpse of " + p.Name,
+		Position: Position{p.X, p.Y},
+		Type:     "corpse",
+		Strings:  map[string]string{"type": "player"},
+	}, false)
+	g.PlayerReset(p)
+}
+
+func (g *RPG) PlayerReset(p *Player) {
+	g.Zones[p.CurrentZone].RemovePlayer(p)
+	p.HP = p.Stats.MaxHP()
+	g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+
+	g.Outgoing <- OutgoingMessage{
+		PlayerId: p.Id,
+		Zone:     p.CurrentZone,
+		Type:     ACTION_UPDATE,
 	}
 }
 

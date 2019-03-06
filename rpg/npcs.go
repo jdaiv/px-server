@@ -89,6 +89,12 @@ func BlobIdle(self *NPC) bool {
 }
 
 func BlobCombat(self *NPC) bool {
+	for _, p := range self.Zone.Players {
+		if intAbs(int64(self.X-p.X)) <= 1 && intAbs(int64(self.Y-p.Y)) <= 1 {
+			self.Attack(p)
+			return true
+		}
+	}
 	x, y, ok := self.Zone.Move(self.X, self.Y, dirMap[rand.Intn(4)])
 	self.X = x
 	self.Y = y

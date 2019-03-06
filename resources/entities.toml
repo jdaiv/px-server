@@ -59,6 +59,5 @@ UseFunc = 'attack_dummy'
 DefaultName = 'corpse'
 Size = [1, 1]
 Blocking = false
-UseFunc = 'attack_dummy'
 Strings = ['type']
 ExportStrings = ['type']

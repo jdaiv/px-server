@@ -32,7 +32,10 @@ func (z *Zone) CheckCombat() bool {
 
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
+		log.Printf("zone %s entering combat!", z.Name)
 		z.StartCombat()
+	} else if !z.CombatInfo.InCombat && oldVal {
+		log.Printf("zone %s exiting combat", z.Name)
 	}
 
 	if z.CombatInfo.InCombat {
@@ -43,6 +46,8 @@ func (z *Zone) CheckCombat() bool {
 }
 
 func (z *Zone) StartCombat() {
+	z.CombatInfo.Current = 0
+	z.CombatInfo.Turn = 1
 	z.CombatInfo.Combatants = nil
 	z.CombatInfo.Combatants = make([]CombatInfo, 0)
 	for _, p := range z.Players {
@@ -176,6 +181,14 @@ func (z *Zone) CombatTick() bool {
 	}
 
 	current.Actor.Tick()
+	for _, c := range ci.Combatants {
+		if c.IsPlayer {
+			p := c.Actor.(*Player)
+			if p.HP <= 0 {
+				z.Parent.KillPlayer(p)
+			}
+		}
+	}
 	if current.Actor.IsTurnOver() {
 		z.NextCombatant()
 	}
@@ -222,7 +235,7 @@ func (n *NPC) InitCombat() CombatInfo {
 }
 
 func (n *NPC) Attack(enemy Combatant) {
-	enemy.Damage(1)
+	enemy.Damage(5)
 }
 
 func (n *NPC) Damage(amt int) {
@@ -251,7 +264,7 @@ func (p *Player) InitCombat() CombatInfo {
 }
 
 func (p *Player) Attack(enemy Combatant) {
-	enemy.Damage(1)
+	enemy.Damage(5)
 }
 
 func (p *Player) Damage(amt int) {
