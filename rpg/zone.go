@@ -345,7 +345,7 @@ func (z *Zone) UseItem(player *Player, entId int) bool {
 		return false
 	}
 
-	if intAbs(int64(ent.X-player.X)) > 1 || intAbs(int64(ent.X-player.X)) > 1 {
+	if intAbs(int64(ent.X-player.X)) > 1 || intAbs(int64(ent.Y-player.Y)) > 1 {
 		log.Printf("[rpg/zone/%s/use] player %d tried to use ent %d, but was too far away", z.Name, player.Id, entId)
 		return false
 	}
