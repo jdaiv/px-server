@@ -42,15 +42,16 @@ type TileDef struct {
 }
 
 type EntityDef struct {
-	DefaultName string
-	Draw        string
-	Size        Position
-	Blocking    bool
-	Usable      bool
-	UseFunc     string
-	UseText     string
-	Strings     []string
-	Ints        []string
+	DefaultName   string
+	Draw          string
+	Size          Position
+	Blocking      bool
+	Usable        bool
+	UseFunc       string
+	UseText       string
+	Strings       []string
+	ExportStrings []string
+	Ints          []string
 }
 
 type NPCDef struct {

@@ -12,8 +12,9 @@ type Player struct {
 	X           int    `json:"-"`
 	Y           int    `json:"-"`
 
-	HP int `json:"hp"`
-	AP int `json:"ap"`
+	HP    int       `json:"hp"`
+	AP    int       `json:"ap"`
+	Stats StatBlock `json:"stats"`
 
 	DisplayData PlayerDisplayData `json:"-"`
 }
@@ -47,8 +48,9 @@ type PlayerInfo struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 
-	HP int `json:"hp"`
-	AP int `json:"ap"`
+	HP    int       `json:"hp"`
+	AP    int       `json:"ap"`
+	Stats StatBlock `json:"stats"`
 }
 
 func (p *Player) EquipItem(itemId int) bool {
@@ -78,6 +80,8 @@ func (p *Player) EquipItem(itemId int) bool {
 	p.Slots[targetSlot] = item
 	item.Save()
 
+	p.BuildStats()
+
 	return true
 }
 
@@ -91,6 +95,8 @@ func (p *Player) UnequipItem(slot string) bool {
 	p.Inventory[item.Id] = item
 	p.Slots[slot] = nil
 	item.Save()
+
+	p.BuildStats()
 
 	return true
 }
@@ -131,5 +137,6 @@ func (p *Player) GetInfo() PlayerInfo {
 		Y:         p.Y,
 		HP:        p.HP,
 		AP:        p.AP,
+		Stats:     p.Stats,
 	}
 }

@@ -180,6 +180,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 	}
 
 	g.LoadItemsForPlayer(p)
+	p.BuildStats()
 
 	g.Players[msg.PlayerId] = p
 

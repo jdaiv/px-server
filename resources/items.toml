@@ -9,7 +9,8 @@ Special = ['sunglasses']
 [sunglasses.requirements]
 cool = 99
 [sunglasses.stats]
-armor = 0
+defense_phys = 1
+defense_magic = 1
 
 [sword]
 Quality = 2
@@ -18,7 +19,7 @@ Type = 'melee'
 MaxQty = 1
 Durability = 9999
 [sword.stats]
-attack = 5
+attack_phys = 5
 
 [potion]
 Quality = 1
@@ -29,4 +30,4 @@ Durability = 9999
 Special = ['consumable']
 [potion.requirements]
 [potion.stats]
-restore = 10
+restore_hp = 10

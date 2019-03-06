@@ -54,3 +54,11 @@ Usable = true
 UseText = 'attack'
 Blocking = true
 UseFunc = 'attack_dummy'
+
+[corpse]
+DefaultName = 'corpse'
+Size = [1, 1]
+Blocking = false
+UseFunc = 'attack_dummy'
+Strings = ['type']
+ExportStrings = ['type']

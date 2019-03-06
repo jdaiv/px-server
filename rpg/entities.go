@@ -17,14 +17,15 @@ var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 }
 
 type EntityInfo struct {
-	Id       int    `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
-	Usable   bool   `json:"usable"`
-	UseText  string `json:"useText"`
-	Blocking bool   `json:"-"`
+	Id       int               `json:"id"`
+	Name     string            `json:"name"`
+	Type     string            `json:"type"`
+	X        int               `json:"x"`
+	Y        int               `json:"y"`
+	Usable   bool              `json:"usable"`
+	UseText  string            `json:"useText"`
+	Blocking bool              `json:"-"`
+	Strings  map[string]string `json:"strings"`
 }
 
 type Entity struct {
@@ -60,6 +61,12 @@ func NewEntity(zone *Zone, id int, def ZoneEntityDef) (*Entity, error) {
 }
 
 func (e *Entity) GetInfo() EntityInfo {
+	exportedStrings := make(map[string]string)
+	for _, key := range e.RootDef.ExportStrings {
+		if v, ok := e.Def.Strings[key]; ok {
+			exportedStrings[key] = v
+		}
+	}
 	return EntityInfo{
 		Id:       e.Id,
 		Name:     e.Name,
@@ -69,6 +76,7 @@ func (e *Entity) GetInfo() EntityInfo {
 		Usable:   e.RootDef.Usable,
 		UseText:  e.RootDef.UseText,
 		Blocking: e.RootDef.Blocking,
+		Strings:  exportedStrings,
 	}
 }
 
