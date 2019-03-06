@@ -5,6 +5,7 @@ Name = 'Sunglasses'
 Type = 'helmet'
 MaxQty = 1
 Durability = 9999
+Price = 10
 Special = ['sunglasses']
 [sunglasses.requirements]
 cool = 99
@@ -18,6 +19,7 @@ Name = 'sword'
 Type = 'melee'
 MaxQty = 1
 Durability = 9999
+Price = 10
 [sword.stats]
 attack_phys = 5
 
@@ -27,6 +29,7 @@ Name = 'Potion'
 Type = 'consumable'
 MaxQty = 1
 Durability = 9999
+Price = 10
 Special = ['consumable']
 [potion.requirements]
 [potion.stats]

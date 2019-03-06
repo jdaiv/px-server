@@ -81,6 +81,7 @@ type ItemDef struct {
 	Quality    int
 	MaxQty     int
 	Durability int
+	Price      int
 	Special    []string
 	Stats      map[string]int
 }

@@ -15,6 +15,7 @@ type Item struct {
 	Type         string         `json:"type"`
 	MaxQty       int            `json:"maxQty"`
 	Durability   int            `json:"durability"`
+	Price        int            `json:"price"`
 	Stats        map[string]int `json:"stats"`
 	SpecialAttrs []string       `json:"specials"`
 
@@ -33,6 +34,7 @@ type ItemInfo struct {
 	Name         string         `json:"name"`
 	Type         string         `json:"type"`
 	Durability   int            `json:"durability"`
+	Price        int            `json:"price"`
 	Stats        map[string]int `json:"stats"`
 	SpecialAttrs []string       `json:"specials"`
 
@@ -48,6 +50,7 @@ func (g *RPG) NewItem(def ItemDef) (*Item, error) {
 		Type:         def.Type,
 		MaxQty:       def.MaxQty,
 		Durability:   def.Durability,
+		Price:        def.Price,
 		SpecialAttrs: make([]string, len(def.Special)),
 		Stats:        make(map[string]int),
 	}
@@ -196,6 +199,7 @@ func (i *Item) GetInfo() ItemInfo {
 		Quality:      i.Quality,
 		Type:         i.Type,
 		Durability:   i.Durability,
+		Price:        i.Price,
 		SpecialAttrs: i.SpecialAttrs,
 		Stats:        i.Stats,
 		X:            i.X,
