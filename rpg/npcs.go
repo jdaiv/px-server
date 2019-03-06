@@ -92,6 +92,8 @@ func BlobCombat(self *NPC) bool {
 	for _, p := range self.Zone.Players {
 		if intAbs(int64(self.X-p.X)) <= 1 && intAbs(int64(self.Y-p.Y)) <= 1 {
 			self.Attack(p)
+			self.Zone.SendEffect("wood_ex", p.X, p.Y)
+			self.Zone.SendEffect("screen_shake", 8, 8)
 			return true
 		}
 	}
