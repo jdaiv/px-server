@@ -21,15 +21,6 @@ var npcCombatLogicFuncs = map[string]func(*NPC) bool{
 	"blob": BlobCombat,
 }
 
-type NPCInfo struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Alignment string `json:"alignment"`
-}
-
 type NPC struct {
 	Zone      *Zone
 	Id        int
@@ -62,17 +53,6 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 		Alignment: npcDef.Alignment,
 		Logic:     npcDef.Logic,
 	}, nil
-}
-
-func (n *NPC) GetInfo() NPCInfo {
-	return NPCInfo{
-		Id:        n.Id,
-		Name:      n.Name,
-		Type:      n.Type,
-		X:         n.X,
-		Y:         n.Y,
-		Alignment: n.Alignment,
-	}
 }
 
 func (n *NPC) CombatTick() {

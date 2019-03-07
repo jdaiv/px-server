@@ -18,21 +18,23 @@ type Zone struct {
 	Entities     map[int]*Entity
 	NPCs         map[int]*NPC
 	Players      map[int]*Player
-	Items        map[int]*Item
+	Items        map[int]bool
 
 	CombatInfo  *ZoneCombatData
 	DisplayData ZoneDisplayData
+
+	Dirty bool
 }
 
 type ZoneDisplayData struct {
-	Width      int                       `json:"width"`
-	Height     int                       `json:"height"`
-	Map        []Tile                    `json:"map"`
-	Entities   []EntityInfo              `json:"entities"`
-	Players    map[int]PlayerDisplayData `json:"players"`
-	NPCs       map[int]NPCInfo           `json:"npcs"`
-	Items      map[int]ItemInfo          `json:"items"`
-	CombatInfo ZoneCombatData            `json:"combatInfo"`
+	Width      int                `json:"width"`
+	Height     int                `json:"height"`
+	Map        []Tile             `json:"map"`
+	Entities   []EntityInfo       `json:"entities"`
+	Players    map[int]PlayerInfo `json:"players"`
+	NPCs       map[int]NPCInfo    `json:"npcs"`
+	Items      map[int]ItemInfo   `json:"items"`
+	CombatInfo ZoneCombatData     `json:"combatInfo"`
 }
 
 func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
@@ -52,9 +54,10 @@ func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
 		Players:      make(map[int]*Player),
 		NPCs:         make(map[int]*NPC),
 		Entities:     make(map[int]*Entity),
-		Items:        parent.GetItemsForZone(name),
 		CombatInfo:   &ZoneCombatData{},
 	}
+
+	parent.Items.LoadIntoZone(zone)
 
 	for _, e := range def.Entity {
 		zone.AddEntity(e, false)
@@ -96,14 +99,15 @@ func (z *Zone) BuildDisplayData() {
 	for _, e := range z.Entities {
 		entities = append(entities, e.GetInfo())
 	}
-	players := make(map[int]PlayerDisplayData)
+	players := make(map[int]PlayerInfo)
 	for _, p := range z.Players {
-		p.UpdateDisplay()
-		players[p.Id] = p.DisplayData
+		players[p.Id] = p.GetInfoPublic(z.Parent)
 	}
 	items := make(map[int]ItemInfo)
-	for id, i := range z.Items {
-		items[id] = i.GetInfo()
+	for id, _ := range z.Items {
+		if item, ok := z.Parent.Items.Get(id); ok {
+			items[id] = item.GetInfo()
+		}
 	}
 	npcs := make(map[int]NPCInfo)
 	for id, n := range z.NPCs {
@@ -169,43 +173,41 @@ func (z *Zone) RemoveNPC(npcId int) {
 	z.CheckCombat()
 }
 
-func (z *Zone) AddItem(itemType string, x, y int) (*Item, error) {
+func (z *Zone) AddItem(itemType string, x, y int) (Item, error) {
 	def, ok := z.Parent.Defs.Items[itemType]
 	if !ok {
 		log.Printf("[rpg/zone/%s/createitem] item doesn't exist '%s'", z.Name, itemType)
-		return nil, errors.New("item doesn't exist")
+		return Item{}, errors.New("item doesn't exist")
 	}
 
-	item, err := z.Parent.NewItem(def)
-	if err != nil {
-		log.Printf("[rpg/zone/%s/createitem] error creating item '%s': %v", z.Name, itemType, err)
-		return nil, errors.New("db error")
+	item, ok := z.Parent.Items.New(def)
+	if !ok {
+		log.Printf("[rpg/zone/%s/createitem] error creating item '%s'", z.Name, itemType)
+		return Item{}, nil
 	}
 
 	item.X = x
 	item.Y = y
 	item.CurrentZone = z.Name
-	if err := item.Save(); err != nil {
-		log.Printf("[rpg/zone/%s/createitem] error updating item %d: %v", z.Name, item.Id, err)
-		return item, errors.New("db error")
-	}
 
-	z.Items[item.Id] = item
+	z.Items[item.Id] = true
+	z.Parent.Items.Save(item)
+
 	return item, nil
 }
 
-func (z *Zone) AddExistingItem(item *Item, x, y int) error {
+func (z *Zone) AddExistingItem(itemId int, x, y int) {
+	item, ok := z.Parent.Items.Get(itemId)
+	if !ok {
+		log.Printf("[rpg/zone/%s/additem] item %d doesn't exist", z.Name, itemId)
+		return
+	}
 	item.Held = false
 	item.X = x
 	item.Y = y
 	item.CurrentZone = z.Name
-	if err := item.Save(); err != nil {
-		log.Printf("[rpg/zone/%s/createitem] error updating item %d: %v", z.Name, item.Id, err)
-		return errors.New("db error")
-	}
-
-	z.Items[item.Id] = item
-	return nil
+	z.Items[item.Id] = true
+	z.Parent.Items.Save(item)
 }
 
 func (z *Zone) RemoveItem(item *Item) {
@@ -242,7 +244,7 @@ func (z *Zone) SendEffect(effectType string, x, y int) {
 }
 
 func (z *Zone) AddPlayer(player *Player, x, y int) {
-	if player.CurrentZone != "" {
+	if player.CurrentZone != "" && player.CurrentZone != z.Name {
 		return
 	}
 	player.CurrentZone = z.Name
@@ -271,24 +273,6 @@ func (z *Zone) RemovePlayer(player *Player) {
 	delete(z.Players, player.Id)
 	player.CurrentZone = ""
 	z.CheckCombat()
-}
-
-func (z *Zone) MovePlayer(player *Player, direction string) {
-	if player.CurrentZone != z.Name {
-		return
-	}
-
-	x, y, ok := z.Move(player.X, player.Y, direction)
-	if !ok {
-		return
-	}
-
-	if !z.CheckAPCost(player, 1) {
-		return
-	}
-	player.X = x
-	player.Y = y
-	z.PostPlayerAction(player)
 }
 
 func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
@@ -334,73 +318,12 @@ func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
 	return _x, _y, (x != _x || y != _y)
 }
 
-func (z *Zone) UseItem(player *Player, entId int) bool {
-	if player.CurrentZone != z.Name {
-		return false
-	}
-
-	ent, ok := z.Entities[entId]
-	if !ok {
-		log.Printf("[rpg/zone/%s/use] couldn't find ent %d", z.Name, entId)
-		return false
-	}
-
-	if intAbs(int64(ent.X-player.X)) > 1 || intAbs(int64(ent.Y-player.Y)) > 1 {
-		log.Printf("[rpg/zone/%s/use] player %d tried to use ent %d, but was too far away", z.Name, player.Id, entId)
-		return false
-	}
-
-	log.Printf("[rpg/zone/%s/use] using ent %d", z.Name, entId)
-
-	if !z.CheckAPCost(player, 1) {
-		return false
-	}
-
-	needsUpdate, err := ent.Use(player)
-	if err != nil {
-		log.Printf("[rpg/zone/%s/use] failed to use ent %d (%s): %v", z.Name, entId, ent.Type, err)
-	}
-
-	z.PostPlayerAction(player)
-
-	return needsUpdate
-}
-
-func (z *Zone) TakeItem(player *Player, itemId int) bool {
-	if player.CurrentZone != z.Name {
-		return false
-	}
-
-	item, ok := z.Items[itemId]
-	if !ok {
-		log.Printf("[rpg/zone/%s/take_item] couldn't find item %d", z.Name, itemId)
-		return false
-	}
-
-	if intAbs(int64(item.X-player.X)) > 1 || intAbs(int64(item.X-player.X)) > 1 {
-		log.Printf("[rpg/zone/%s/take_item] player %d tried to take item %d but was too far away", z.Name, player.Id, itemId)
-		return false
-	}
-
-	log.Printf("[rpg/zone/%s/take_item] grabbing item %d", z.Name, itemId)
-
-	if !z.CheckAPCost(player, 1) {
-		return false
-	}
-
-	err := item.Give(player)
-	if err != nil {
-		log.Printf("[rpg/zone/%s/take_item] failed to update item %d: %v", z.Name, itemId, err)
-	}
-	delete(z.Items, itemId)
-
-	z.PostPlayerAction(player)
-
-	return true
-}
-
 // thanks http://cavaliercoder.com/blog/optimized-abs-for-int64-in-go.html
 func intAbs(n int64) int64 {
 	y := n >> 63
 	return (n ^ y) - y
+}
+
+func nextTo(x1, y1, x2, y2 int) bool {
+	return intAbs(int64(x2-x1)) <= 1 && intAbs(int64(y2-y1)) <= 1
 }

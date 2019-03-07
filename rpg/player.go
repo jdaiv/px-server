@@ -3,62 +3,48 @@ package rpg
 var playerSlots = []string{"head", "torso", "legs", "hands"}
 
 type Player struct {
-	Id        int              `json:"id"`
-	Name      string           `json:"name"`
-	Slots     map[string]*Item `json:"slots"`
-	Inventory map[int]*Item    `json:"inventory"`
+	Id        int            `json:"-"`
+	Name      string         `json:"-"`
+	Slots     map[string]int `json:"-"`
+	Inventory map[int]bool   `json:"-"`
 
-	CurrentZone string `json:"-"`
-	X           int    `json:"-"`
-	Y           int    `json:"-"`
+	CurrentZone string `json:"currentZone"`
+	X           int    `json:"x"`
+	Y           int    `json:"y"`
 
 	HP    int       `json:"hp"`
 	AP    int       `json:"ap"`
-	Stats StatBlock `json:"stats"`
-
-	DisplayData PlayerDisplayData `json:"-"`
+	Stats StatBlock `json:"-"`
 }
 
-type PlayerDisplayData struct {
-	Id    int                 `json:"id"`
-	Name  string              `json:"name"`
-	Slots map[string]ItemInfo `json:"slots"`
-	X     int                 `json:"x"`
-	Y     int                 `json:"y"`
-	HP    int                 `json:"hp"`
-	MaxHP int                 `json:"maxHP"`
+func (p *Player) Rebuild(base *RPG) {
+	base.Items.LoadIntoPlayer(p)
+	p.BuildStats(base)
 }
 
-func (p *Player) UpdateDisplay() {
-	p.DisplayData = PlayerDisplayData{
-		Id:    p.Id,
-		Name:  p.Name,
-		Slots: p.GetInfo().Slots,
-		X:     p.X,
-		Y:     p.Y,
-		HP:    p.HP,
+func (p *Player) BuildStats(base *RPG) {
+	stats := StatBlock{}
+	for _, itemId := range p.Slots {
+		if itemId <= 0 {
+			continue
+		}
+		item, ok := base.Items.Get(itemId)
+		if !ok {
+			continue
+		}
+		stats.Add(item.Stats)
 	}
+	p.Stats = stats
 }
 
-type PlayerInfo struct {
-	Id        int                 `json:"id"`
-	Name      string              `json:"name"`
-	Slots     map[string]ItemInfo `json:"slots"`
-	Inventory map[int]ItemInfo    `json:"inventory"`
+func (p *Player) EquipItem(base *RPG, itemId int) bool {
+	_, ok := p.Inventory[itemId]
+	if !ok {
+		return false
+	}
 
-	X int `json:"x"`
-	Y int `json:"y"`
-
-	HP    int       `json:"hp"`
-	MaxHP int       `json:"maxHP"`
-	AP    int       `json:"ap"`
-	MaxAP int       `json:"maxAP"`
-	Stats StatBlock `json:"stats"`
-}
-
-func (p *Player) EquipItem(itemId int) bool {
-	item, ok := p.Inventory[itemId]
-	if !ok || item == nil {
+	item, ok := base.Items.Get(itemId)
+	if !ok {
 		return false
 	}
 
@@ -77,73 +63,36 @@ func (p *Player) EquipItem(itemId int) bool {
 	}
 
 	if _, equipped := p.Slots[targetSlot]; equipped {
-		p.UnequipItem(targetSlot)
+		p.UnequipItem(base, targetSlot)
 	}
 
 	item.Equipped = targetSlot
-	delete(p.Inventory, item.Id)
-	p.Slots[targetSlot] = item
-	item.Save()
-
-	p.BuildStats()
-
+	base.Items.Save(item)
 	return true
 }
 
-func (p *Player) UnequipItem(slot string) bool {
-	item, ok := p.Slots[slot]
-	if !ok || item == nil {
+func (p *Player) UnequipItem(base *RPG, slot string) bool {
+	id, ok := p.Slots[slot]
+	if !ok || id < 0 {
 		return false
 	}
 
-	item.Equipped = ""
-	p.Inventory[item.Id] = item
-	p.Slots[slot] = nil
-	item.Save()
-
-	p.BuildStats()
-
-	return true
-}
-
-func (p *Player) DropItem(zone *Zone, itemId int) bool {
-	item, ok := p.Inventory[itemId]
+	item, ok := base.Items.Get(id)
 	if !ok {
 		return false
 	}
 
-	delete(p.Inventory, itemId)
-	zone.AddExistingItem(item, p.X, p.Y)
-
+	item.Equipped = ""
+	base.Items.Save(item)
 	return true
 }
 
-func (p *Player) GetInfo() PlayerInfo {
-	slots := make(map[string]ItemInfo)
-	for slot, i := range p.Slots {
-		if p.Slots[slot] != nil {
-			slots[slot] = i.GetInfo()
-		} else {
-			slots[slot] = ItemInfo{Type: "empty"}
-		}
+func (p *Player) DropItem(zone *Zone, itemId int) bool {
+	_, ok := p.Inventory[itemId]
+	if !ok {
+		return false
 	}
 
-	inv := make(map[int]ItemInfo)
-	for id, i := range p.Inventory {
-		inv[id] = i.GetInfo()
-	}
-
-	return PlayerInfo{
-		Id:        p.Id,
-		Name:      p.Name,
-		Slots:     slots,
-		Inventory: inv,
-		X:         p.X,
-		Y:         p.Y,
-		HP:        p.HP,
-		AP:        p.AP,
-		MaxHP:     p.Stats.MaxHP(),
-		MaxAP:     p.Stats.MaxAP(),
-		Stats:     p.Stats,
-	}
+	zone.AddExistingItem(itemId, p.X, p.Y)
+	return true
 }

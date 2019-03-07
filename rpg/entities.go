@@ -16,18 +16,6 @@ var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 	"attack_dummy": AttackDummy,
 }
 
-type EntityInfo struct {
-	Id       int               `json:"id"`
-	Name     string            `json:"name"`
-	Type     string            `json:"type"`
-	X        int               `json:"x"`
-	Y        int               `json:"y"`
-	Usable   bool              `json:"usable"`
-	UseText  string            `json:"useText"`
-	Blocking bool              `json:"-"`
-	Strings  map[string]string `json:"strings"`
-}
-
 type Entity struct {
 	Def     ZoneEntityDef
 	RootDef EntityDef
@@ -58,26 +46,6 @@ func NewEntity(zone *Zone, id int, def ZoneEntityDef) (*Entity, error) {
 		X:       def.Position[0],
 		Y:       def.Position[1],
 	}, nil
-}
-
-func (e *Entity) GetInfo() EntityInfo {
-	exportedStrings := make(map[string]string)
-	for _, key := range e.RootDef.ExportStrings {
-		if v, ok := e.Def.Strings[key]; ok {
-			exportedStrings[key] = v
-		}
-	}
-	return EntityInfo{
-		Id:       e.Id,
-		Name:     e.Name,
-		Type:     e.Type,
-		X:        e.X,
-		Y:        e.Y,
-		Usable:   e.RootDef.Usable,
-		UseText:  e.RootDef.UseText,
-		Blocking: e.RootDef.Blocking,
-		Strings:  exportedStrings,
-	}
 }
 
 func (e *Entity) Use(player *Player) (bool, error) {

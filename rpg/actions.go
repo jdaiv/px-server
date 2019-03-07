@@ -31,3 +31,39 @@ var PlayerIncomingActions = map[string]bool{
 	ACTION_USE_ITEM:     true,
 	ACTION_DROP_ITEM:    true,
 }
+
+type ActionParams map[string]interface{}
+
+func (p ActionParams) getInt(name string) (int, bool) {
+	param, ok := p[name]
+	if !ok {
+		return 0, false
+	}
+
+	v, ok := param.(float64)
+	if !ok {
+		return 0, false
+	}
+
+	return int(v), true
+}
+
+func (p ActionParams) getFloat(name string) (float64, bool) {
+	param, ok := p[name]
+	if !ok {
+		return 0, false
+	}
+
+	v, ok := param.(float64)
+	return v, ok
+}
+
+func (p ActionParams) getString(name string) (string, bool) {
+	param, ok := p[name]
+	if !ok {
+		return "", false
+	}
+
+	v, ok := param.(string)
+	return v, ok
+}

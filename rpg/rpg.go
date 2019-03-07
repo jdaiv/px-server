@@ -8,8 +8,8 @@ import (
 type RPG struct {
 	Defs    *Definitions
 	Zones   map[string]*Zone
-	Players map[int]*Player
-	Items   map[int]*Item
+	Players *PlayerDB
+	Items   *ItemDB
 
 	Incoming chan IncomingMessage
 	Outgoing chan OutgoingMessage
@@ -47,8 +47,8 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 	rpg := &RPG{
 		Defs:     defs,
 		Zones:    make(map[string]*Zone),
-		Players:  make(map[int]*Player),
-		Items:    make(map[int]*Item),
+		Players:  NewPlayerDB(db),
+		Items:    NewItemDB(db),
 		Incoming: make(chan IncomingMessage),
 		Outgoing: make(chan OutgoingMessage),
 		DB:       db,
@@ -87,7 +87,7 @@ func (g *RPG) HandleMessages() {
 		} else if incoming.Data.Type == ACTION_LEAVE {
 			g.PlayerLeave(incoming.PlayerId)
 		} else {
-			p, ok := g.Players[incoming.PlayerId]
+			p, ok := g.Players.Get(incoming.PlayerId)
 			if !ok {
 				log.Printf("couldn't find player %d", incoming.PlayerId)
 				continue
@@ -108,6 +108,11 @@ func (g *RPG) HandleMessages() {
 				log.Printf("player tried to act out of order %s", p.Name)
 				continue
 			}
+
+			oldZone := p.CurrentZone
+
+			g.Players.SetDirty(p.Id)
+
 			switch incoming.Data.Type {
 			case ACTION_MOVE:
 				g.PlayerMove(p, zone, incoming.Data.Params)
@@ -122,6 +127,21 @@ func (g *RPG) HandleMessages() {
 			case ACTION_DROP_ITEM:
 				g.PlayerDropItem(p, zone, incoming.Data.Params)
 			}
+			zone.PostPlayerAction(p)
+			zone.CheckCombat()
+			g.Players.Commit()
+
+			g.Outgoing <- OutgoingMessage{
+				PlayerId: p.Id,
+				Zone:     p.CurrentZone,
+				Type:     ACTION_UPDATE,
+			}
+			if p.CurrentZone != oldZone {
+				g.Outgoing <- OutgoingMessage{
+					Zone: oldZone,
+					Type: ACTION_UPDATE,
+				}
+			}
 		}
 	}
 }
@@ -133,7 +153,7 @@ func (g *RPG) PrepareDisplay() {
 }
 
 func (g *RPG) BuildDisplayFor(pId int) DisplayData {
-	p, ok := g.Players[pId]
+	p, ok := g.Players.Get(pId)
 	if !ok {
 		return DisplayData{}
 	}
@@ -144,7 +164,7 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 	}
 
 	return DisplayData{
-		Player: p.GetInfo(),
+		Player: p.GetInfo(g),
 		Zone:   zone.DisplayData,
 	}
 }
@@ -165,33 +185,23 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		}
 	}
 
-	data, err := LoadPlayer(g.DB, msg.PlayerId)
-	if err != nil {
-		log.Printf("[rpg/player/join] error loading player: %v", err)
+	p, ok := g.Players.Get(msg.PlayerId)
+	if !ok {
+		log.Printf("[rpg/player/join] error loading player %d:%s", msg.PlayerId, name)
 	}
 
-	p := &Player{
-		Id:   msg.PlayerId,
-		Name: name,
-		X:    data.X,
-		Y:    data.Y,
-		HP:   data.HP,
-		AP:   data.AP,
-	}
-
-	g.LoadItemsForPlayer(p)
-	p.BuildStats()
+	p.Name = name
+	p.Rebuild(g)
 
 	if p.HP <= 0 {
 		p.HP = p.Stats.MaxHP()
 	}
 
-	g.Players[msg.PlayerId] = p
-
-	if _, hasZone := g.Zones[data.CurrentZone]; hasZone {
-		g.Zones[data.CurrentZone].AddPlayer(p, data.X, data.Y)
+	if _, hasZone := g.Zones[p.CurrentZone]; hasZone {
+		g.Zones[p.CurrentZone].AddPlayer(p, p.X, p.Y)
 	} else {
 		g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+		g.Players.SetDirty(p.Id)
 	}
 
 	g.Outgoing <- OutgoingMessage{
@@ -202,12 +212,12 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 }
 
 func (g *RPG) PlayerLeave(id int) {
-	p, ok := g.Players[id]
+	p, ok := g.Players.Get(id)
 	if !ok {
 		return
 	}
 	zone := p.CurrentZone
-	SavePlayer(g.DB, p)
+	g.Players.SetDirty(id)
 	g.Zones[zone].RemovePlayer(p)
 
 	g.Outgoing <- OutgoingMessage{
@@ -219,9 +229,7 @@ func (g *RPG) PlayerLeave(id int) {
 
 func (g *RPG) SaveAllPlayers() {
 	log.Printf("saving all players")
-	for _, p := range g.Players {
-		SavePlayer(g.DB, p)
-	}
+	g.Players.Commit()
 }
 
 func (g *RPG) KillPlayer(p *Player) {
@@ -243,147 +251,5 @@ func (g *RPG) PlayerReset(p *Player) {
 		PlayerId: p.Id,
 		Zone:     p.CurrentZone,
 		Type:     ACTION_UPDATE,
-	}
-}
-
-func (g *RPG) PlayerMove(p *Player, zone *Zone, params map[string]interface{}) {
-	direction, ok := params["direction"].(string)
-	if !ok {
-		return
-	}
-
-	zone.MovePlayer(p, direction)
-
-	g.Outgoing <- OutgoingMessage{
-		PlayerId: p.Id,
-		Zone:     p.CurrentZone,
-		Type:     ACTION_UPDATE,
-	}
-}
-
-func (g *RPG) PlayerUse(p *Player, zone *Zone, params map[string]interface{}) {
-	entIdParam, ok := params["id"]
-	if !ok {
-		log.Println("couldn't find ent id param")
-		return
-	}
-
-	entId, ok := entIdParam.(float64)
-	if !ok {
-		log.Println("ent id param not number")
-		return
-	}
-
-	oldZone := p.CurrentZone
-
-	if zone.UseItem(p, int(entId)) {
-		g.Outgoing <- OutgoingMessage{
-			PlayerId: p.Id,
-			Zone:     p.CurrentZone,
-			Type:     ACTION_UPDATE,
-		}
-		if p.CurrentZone != oldZone {
-			g.Outgoing <- OutgoingMessage{
-				Zone: oldZone,
-				Type: ACTION_UPDATE,
-			}
-		}
-	}
-}
-
-func (g *RPG) PlayerTakeItem(p *Player, zone *Zone, params map[string]interface{}) {
-	entIdParam, ok := params["id"]
-	if !ok {
-		log.Println("couldn't find item id param")
-		return
-	}
-
-	entId, ok := entIdParam.(float64)
-	if !ok {
-		log.Println("item id param not number")
-		return
-	}
-
-	if zone.TakeItem(p, int(entId)) {
-		g.Outgoing <- OutgoingMessage{
-			PlayerId: p.Id,
-			Zone:     p.CurrentZone,
-			Type:     ACTION_UPDATE,
-		}
-	}
-}
-
-func (g *RPG) PlayerEquipItem(p *Player, zone *Zone, params map[string]interface{}) {
-	itemIdParam, ok := params["id"]
-	if !ok {
-		log.Println("couldn't find item id param")
-		return
-	}
-
-	itemId, ok := itemIdParam.(float64)
-	if !ok {
-		log.Println("item id param not number")
-		return
-	}
-
-	if !zone.CheckAPCost(p, 1) {
-		return
-	}
-	if p.EquipItem(int(itemId)) {
-		zone.PostPlayerAction(p)
-		g.Outgoing <- OutgoingMessage{
-			PlayerId: p.Id,
-			Zone:     p.CurrentZone,
-			Type:     ACTION_UPDATE,
-		}
-	}
-}
-
-func (g *RPG) PlayerUnequipItem(p *Player, zone *Zone, params map[string]interface{}) {
-	slotParam, ok := params["slot"]
-	if !ok {
-		log.Println("couldn't find item slot param")
-		return
-	}
-
-	slot, ok := slotParam.(string)
-	if !ok {
-		log.Println("item slot param not number")
-		return
-	}
-
-	if !zone.CheckAPCost(p, 1) {
-		return
-	}
-	if p.UnequipItem(slot) {
-		zone.PostPlayerAction(p)
-		g.Outgoing <- OutgoingMessage{
-			PlayerId: p.Id,
-			Zone:     p.CurrentZone,
-			Type:     ACTION_UPDATE,
-		}
-	}
-}
-
-func (g *RPG) PlayerDropItem(p *Player, zone *Zone, params map[string]interface{}) {
-	itemIdParam, ok := params["id"]
-	if !ok {
-		log.Println("couldn't find ent id param")
-		return
-	}
-
-	itemId, ok := itemIdParam.(float64)
-	if !ok {
-		log.Println("item id param not number")
-		return
-	}
-
-	if p.DropItem(zone, int(itemId)) {
-		zone.PostPlayerAction(p)
-		g.Outgoing <- OutgoingMessage{
-			PlayerId: p.Id,
-			Zone:     p.CurrentZone,
-			Type:     ACTION_UPDATE,
-		}
 	}
 }
