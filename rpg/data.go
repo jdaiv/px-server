@@ -57,6 +57,7 @@ type EntityDef struct {
 type NPCDef struct {
 	Alignment string
 	Logic     string
+	HP        int
 }
 
 type ZoneEntityDef struct {

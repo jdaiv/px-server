@@ -211,6 +211,14 @@ func (z *Zone) PostPlayerAction(player *Player) {
 	if !z.CombatInfo.InCombat {
 		return
 	}
+	for _, c := range z.CombatInfo.Combatants {
+		if !c.IsPlayer {
+			p := c.Actor.(*NPC)
+			if p.HP <= 0 {
+				z.Parent.KillNPC(z, p)
+			}
+		}
+	}
 	if player.IsTurnOver() {
 		z.NextCombatant()
 	}

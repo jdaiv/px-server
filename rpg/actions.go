@@ -13,6 +13,7 @@ const (
 	ACTION_UNEQUIP_ITEM = "unequip_item"
 	ACTION_USE_ITEM     = "use_item"
 	ACTION_DROP_ITEM    = "drop_item"
+	ACTION_ATTACK       = "attack"
 	// outgoing actions
 	ACTION_UPDATE        = "state_update"
 	ACTION_UPDATE_PLAYER = "player_update"
@@ -30,6 +31,7 @@ var PlayerIncomingActions = map[string]bool{
 	ACTION_UNEQUIP_ITEM: true,
 	ACTION_USE_ITEM:     true,
 	ACTION_DROP_ITEM:    true,
+	ACTION_ATTACK:       true,
 }
 
 type ActionParams map[string]interface{}

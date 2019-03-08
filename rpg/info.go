@@ -132,6 +132,8 @@ type NPCInfo struct {
 	Type      string `json:"type"`
 	X         int    `json:"x"`
 	Y         int    `json:"y"`
+	HP        int    `json:"hp"`
+	MaxHP     int    `json:"maxHP"`
 	Alignment string `json:"alignment"`
 }
 
@@ -142,6 +144,8 @@ func (n NPC) GetInfo() NPCInfo {
 		Type:      n.Type,
 		X:         n.X,
 		Y:         n.Y,
+		HP:        n.HP,
+		MaxHP:     n.MaxHP,
 		Alignment: n.Alignment,
 	}
 }

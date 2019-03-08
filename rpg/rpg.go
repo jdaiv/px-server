@@ -126,9 +126,14 @@ func (g *RPG) HandleMessages() {
 				g.PlayerUnequipItem(p, zone, incoming.Data.Params)
 			case ACTION_DROP_ITEM:
 				g.PlayerDropItem(p, zone, incoming.Data.Params)
+			case ACTION_ATTACK:
+				g.PlayerAttack(p, zone, incoming.Data.Params)
 			}
+
 			zone.PostPlayerAction(p)
 			zone.CheckCombat()
+			zone.BuildCollisionMap()
+
 			g.Players.Commit()
 
 			g.Outgoing <- OutgoingMessage{
@@ -240,6 +245,16 @@ func (g *RPG) KillPlayer(p *Player) {
 		Strings:  map[string]string{"type": "player"},
 	}, false)
 	g.PlayerReset(p)
+}
+
+func (g *RPG) KillNPC(z *Zone, n *NPC) {
+	delete(z.NPCs, n.Id)
+	z.AddEntity(ZoneEntityDef{
+		Name:     "corpse of " + n.Name,
+		Position: Position{n.X, n.Y},
+		Type:     "corpse",
+		Strings:  map[string]string{"type": n.Type},
+	}, false)
 }
 
 func (g *RPG) PlayerReset(p *Player) {

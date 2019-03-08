@@ -29,6 +29,7 @@ type NPC struct {
 	X         int
 	Y         int
 	HP        int
+	MaxHP     int
 	Alignment string
 	Logic     string
 }
@@ -49,7 +50,8 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 		Type:      def.Type,
 		X:         def.Position[0],
 		Y:         def.Position[1],
-		HP:        10,
+		HP:        npcDef.HP,
+		MaxHP:     npcDef.HP,
 		Alignment: npcDef.Alignment,
 		Logic:     npcDef.Logic,
 	}, nil

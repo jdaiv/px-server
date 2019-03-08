@@ -9,7 +9,7 @@ func (g *RPG) PlayerTakeItem(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	item, ok := z.Parent.Items.GetInZone(itemId, z.Name)
+	item, ok := g.Items.GetInZone(itemId, z.Name)
 	if !ok {
 		log.Printf("[rpg/zone/%s/take_item] couldn't find item %d", z.Name, itemId)
 		return

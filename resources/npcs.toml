@@ -2,3 +2,4 @@
 [blob]
 Alignment = 'hostile'
 Logic = 'blob'
+HP = 20
