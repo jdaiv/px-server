@@ -244,9 +244,6 @@ func (z *Zone) SendEffect(effectType string, x, y int) {
 }
 
 func (z *Zone) AddPlayer(player *Player, x, y int) {
-	if player.CurrentZone != "" && player.CurrentZone != z.Name {
-		return
-	}
 	player.CurrentZone = z.Name
 
 	if x >= 0 {
@@ -271,7 +268,6 @@ func (z *Zone) RemovePlayer(player *Player) {
 	}
 
 	delete(z.Players, player.Id)
-	player.CurrentZone = ""
 	z.CheckCombat()
 }
 
