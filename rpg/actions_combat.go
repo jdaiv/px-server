@@ -11,14 +11,14 @@ func (g *RPG) PlayerAttack(p *Player, z *Zone, params ActionParams) {
 
 	npc, ok := z.NPCs[npcId]
 	if !ok {
-		log.Printf("[rpg/zone/%s/take_item] couldn't find npc %d", z.Name, npcId)
+		log.Printf("[rpg/zone/%s/attack] couldn't find npc %d", z.Name, npcId)
 		return
 	}
 
-	// if !nextTo(p.X, p.Y, item.X, item.Y) {
-	// 	log.Printf("[rpg/zone/%s/take_item] player %d tried to take item %d but was too far away", z.Name, p.Id, itemId)
-	// 	return
-	// }
+	if !nextTo(p.X, p.Y, npc.X, npc.Y) {
+		log.Printf("[rpg/zone/%s/attack] player %d tried to attack %d but was too far away", z.Name, p.Id, npcId)
+		return
+	}
 
 	log.Printf("[rpg/zone/%s/attack] attacking %d", z.Name, npcId)
 
