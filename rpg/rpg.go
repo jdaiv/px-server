@@ -87,11 +87,7 @@ func (g *RPG) HandleMessages() {
 		} else if incoming.Data.Type == ACTION_LEAVE {
 			g.PlayerLeave(incoming.PlayerId)
 		} else {
-			p, ok := g.Players.Get(incoming.PlayerId)
-			if !ok {
-				log.Printf("couldn't find player %d", incoming.PlayerId)
-				continue
-			}
+			p := g.Players.Get(incoming.PlayerId)
 			zone, ok := g.Zones[p.CurrentZone]
 			if !ok {
 				log.Printf("couldn't find zone %s for player %d (%s), placing at default", p.CurrentZone, p.Id, p.Name)
@@ -158,10 +154,7 @@ func (g *RPG) PrepareDisplay() {
 }
 
 func (g *RPG) BuildDisplayFor(pId int) DisplayData {
-	p, ok := g.Players.Get(pId)
-	if !ok {
-		return DisplayData{}
-	}
+	p := g.Players.Get(pId)
 
 	zone, ok := g.Zones[p.CurrentZone]
 	if !ok {
@@ -190,11 +183,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		}
 	}
 
-	p, ok := g.Players.Get(msg.PlayerId)
-	if !ok {
-		log.Printf("[rpg/player/join] error loading player %d:%s", msg.PlayerId, name)
-	}
-
+	p := g.Players.Get(msg.PlayerId)
 	p.Name = name
 	p.Rebuild(g)
 
@@ -217,10 +206,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 }
 
 func (g *RPG) PlayerLeave(id int) {
-	p, ok := g.Players.Get(id)
-	if !ok {
-		return
-	}
+	p := g.Players.Get(id)
 	zone := p.CurrentZone
 	g.Players.SetDirty(id)
 	g.Zones[zone].RemovePlayer(p)

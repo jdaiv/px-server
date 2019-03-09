@@ -50,6 +50,7 @@ Type = 'npc_spawner'
 Position = [6, 0]
 [Entity.Strings]
 npc_id = 'blob'
+npc_name = 'blob'
 [Entity.Ints]
-x = 6
-y = 1
+x = 8
+y = 2

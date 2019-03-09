@@ -75,10 +75,15 @@ func NewPlayerDB(db *sql.DB) *PlayerDB {
 	return &playerDB
 }
 
-func (db *PlayerDB) Get(id int) (*Player, bool) {
+func (db *PlayerDB) Get(id int) *Player {
 	// db.log.Printf("Getting player %d", id)
 	player, ok := db.players[id]
-	return player, ok
+	if !ok {
+		db.log.Printf("player %d is new!", id)
+		player = &Player{Id: id}
+		db.players[id] = player
+	}
+	return player
 }
 
 func (db *PlayerDB) SetDirty(id int) {
