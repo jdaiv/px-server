@@ -99,6 +99,7 @@ func (db *PlayerDB) Commit() {
 			db.log.Printf("Failed update player[%v], SQL Error: %v", p, err)
 		}
 	}
+
 	db.dirty = nil
 	db.dirty = make(map[int]bool)
 }
