@@ -25,14 +25,14 @@ func (p *Player) Rebuild(base *RPG) {
 func (p *Player) BuildStats(base *RPG) {
 	stats := StatBlock{}
 	for _, itemId := range p.Slots {
-		if itemId <= 0 {
+		if itemId < 0 {
 			continue
 		}
 		item, ok := base.Items.Get(itemId)
 		if !ok {
 			continue
 		}
-		stats.Add(item.Stats)
+		stats = stats.Add(item.Stats)
 	}
 	p.Stats = stats
 }
