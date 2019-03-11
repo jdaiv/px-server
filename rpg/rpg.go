@@ -63,20 +63,6 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 	return rpg, nil
 }
 
-/*
-	incoming action types:
-		* Player join
-		* Player leave
-		* Player move
-		* Player use
-		* Player change zone
-
-	outgoing action types:
-		* Player update
-		* State update
-		* Chat message
-*/
-
 func (g *RPG) HandleMessages() {
 	for {
 		incoming := <-g.Incoming
@@ -132,16 +118,21 @@ func (g *RPG) HandleMessages() {
 
 			g.Players.Commit()
 
-			g.Outgoing <- OutgoingMessage{
-				PlayerId: p.Id,
-				Zone:     p.CurrentZone,
-				Type:     ACTION_UPDATE,
+			if zone.Dirty {
+				g.Outgoing <- OutgoingMessage{
+					PlayerId: p.Id,
+					Zone:     p.CurrentZone,
+					Type:     ACTION_UPDATE,
+				}
+				zone.Dirty = false
 			}
 			if p.CurrentZone != oldZone {
 				g.Outgoing <- OutgoingMessage{
 					Zone: oldZone,
 					Type: ACTION_UPDATE,
 				}
+				newZone := g.Zones[p.CurrentZone]
+				newZone.Dirty = false
 			}
 		}
 	}
@@ -168,8 +159,15 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 }
 
 func (g *RPG) Tick() {
-	for _, z := range g.Zones {
+	for name, z := range g.Zones {
 		z.Tick()
+		if z.Dirty {
+			g.Outgoing <- OutgoingMessage{
+				Zone: name,
+				Type: ACTION_UPDATE,
+			}
+			z.Dirty = false
+		}
 	}
 }
 
@@ -224,12 +222,14 @@ func (g *RPG) SaveAllPlayers() {
 }
 
 func (g *RPG) KillPlayer(p *Player) {
-	g.Zones[p.CurrentZone].AddEntity(ZoneEntityDef{
+	zone := g.Zones[p.CurrentZone]
+	zone.AddEntity(ZoneEntityDef{
 		Name:     "corpse of " + p.Name,
 		Position: Position{p.X, p.Y},
 		Type:     "corpse",
 		Strings:  map[string]string{"type": "player"},
 	}, false)
+	zone.Dirty = true
 	g.PlayerReset(p)
 }
 

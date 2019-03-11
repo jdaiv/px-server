@@ -5,17 +5,22 @@ import (
 	"math/rand"
 )
 
+const MAX_PLAYER_TURN_TIME = 120
+
 type ZoneCombatData struct {
-	InCombat   bool         `json:"inCombat"`
-	Turn       int          `json:"turn"`
-	Current    int          `json:"current"`
-	Combatants []CombatInfo `json:"combatants"`
+	InCombat   bool          `json:"inCombat"`
+	Waiting    bool          `json:"waiting"`
+	Delay      int           `json:"delay"`
+	Turn       int           `json:"turn"`
+	Current    int           `json:"current"`
+	Combatants []*CombatInfo `json:"combatants"`
 }
 
 type CombatInfo struct {
 	Initiative int       `json:"initiative"`
 	IsPlayer   bool      `json:"isPlayer"`
 	Id         int       `json:"id"`
+	Timer      int       `json:"timer"`
 	Actor      Combatant `json:"-"`
 }
 
@@ -49,7 +54,7 @@ func (z *Zone) StartCombat() {
 	z.CombatInfo.Current = 0
 	z.CombatInfo.Turn = 1
 	z.CombatInfo.Combatants = nil
-	z.CombatInfo.Combatants = make([]CombatInfo, 0)
+	z.CombatInfo.Combatants = make([]*CombatInfo, 0)
 	for _, p := range z.Players {
 		z.AddCombatant(p, false)
 	}
@@ -57,12 +62,18 @@ func (z *Zone) StartCombat() {
 		z.AddCombatant(n, false)
 	}
 	if len(z.CombatInfo.Combatants) > 0 {
-		z.CombatInfo.Combatants[0].Actor.NewTurn()
+		z.CombatInfo.Combatants[0].Actor.NewTurn(z.CombatInfo.Combatants[0])
 	}
+	z.AddDelay(2)
+}
+
+func (z *Zone) AddDelay(ticks int) {
+	z.CombatInfo.Waiting = true
+	z.CombatInfo.Delay += ticks
 }
 
 func (z *Zone) CheckCombatants() {
-	updatedCombatants := make([]CombatInfo, 0)
+	updatedCombatants := make([]*CombatInfo, 0)
 	changed := false
 	currentChanged := false
 	current := z.CombatInfo.Combatants[z.CombatInfo.Current]
@@ -114,7 +125,7 @@ func (z *Zone) CheckCombatants() {
 		z.CombatInfo.Current = currentIdx
 		z.CombatInfo.Combatants = updatedCombatants
 		if currentChanged {
-			z.CombatInfo.Combatants[currentIdx].Actor.NewTurn()
+			z.CombatInfo.Combatants[currentIdx].Actor.NewTurn(z.CombatInfo.Combatants[currentIdx])
 		}
 	}
 
@@ -144,12 +155,15 @@ func (z *Zone) AddCombatant(c Combatant, late bool) {
 	// } else {
 	// }
 
-	z.CombatInfo.Combatants = append(z.CombatInfo.Combatants, info)
+	z.CombatInfo.Combatants = append(z.CombatInfo.Combatants, &info)
 }
 
 func (z *Zone) CanAct(player *Player) bool {
 	ci := z.CombatInfo
-	return !ci.InCombat || (len(ci.Combatants) > 0 && ci.Combatants[ci.Current].IsPlayer && ci.Combatants[ci.Current].Id == player.Id)
+	return !ci.InCombat || (!ci.Waiting &&
+		len(ci.Combatants) > 0 &&
+		ci.Combatants[ci.Current].IsPlayer &&
+		ci.Combatants[ci.Current].Id == player.Id)
 }
 
 func (z *Zone) NextCombatant() {
@@ -160,38 +174,30 @@ func (z *Zone) NextCombatant() {
 		ci.Turn += 1
 	}
 	ci.Current = next
-	ci.Combatants[next].Actor.NewTurn()
-
-	z.Parent.Outgoing <- OutgoingMessage{
-		Zone: z.Name,
-		Type: ACTION_UPDATE,
-	}
+	ci.Combatants[next].Actor.NewTurn(ci.Combatants[next])
+	z.AddDelay(4)
+	z.Dirty = true
 }
 
 func (z *Zone) CombatTick() bool {
 	ci := z.CombatInfo
+
 	if len(ci.Combatants) <= 0 {
 		return false
 	}
 
-	current := ci.Combatants[ci.Current]
-	// if we're waiting on a player to act do nothing
-	if current.IsPlayer {
-		return false
-	}
+	z.Dirty = true
 
-	current.Actor.Tick()
-	for _, c := range ci.Combatants {
-		if c.IsPlayer {
-			p := c.Actor.(*Player)
-			if p.HP <= 0 {
-				z.Parent.KillPlayer(p)
-			}
+	if ci.Waiting {
+		if ci.Delay > 0 {
+			ci.Delay -= 1
+			return true
+		} else {
+			ci.Waiting = false
 		}
 	}
-	if current.Actor.IsTurnOver() {
-		z.NextCombatant()
-	}
+
+	z.PostCombatAction()
 
 	return true
 }
@@ -211,15 +217,29 @@ func (z *Zone) PostPlayerAction(player *Player) {
 	if !z.CombatInfo.InCombat {
 		return
 	}
-	for _, c := range z.CombatInfo.Combatants {
-		if !c.IsPlayer {
+	z.PostCombatAction()
+}
+
+func (z *Zone) PostCombatAction() {
+	ci := z.CombatInfo
+	current := ci.Combatants[ci.Current]
+
+	current.Actor.Tick(current)
+	for _, c := range ci.Combatants {
+		if c.IsPlayer {
+			p := c.Actor.(*Player)
+			if p.HP <= 0 {
+				z.Parent.KillPlayer(p)
+			}
+		} else {
 			p := c.Actor.(*NPC)
 			if p.HP <= 0 {
 				z.Parent.KillNPC(z, p)
 			}
 		}
 	}
-	if player.IsTurnOver() {
+
+	if current.Actor.IsTurnOver(current) {
 		z.NextCombatant()
 	}
 }
@@ -228,9 +248,9 @@ type Combatant interface {
 	InitCombat() CombatInfo
 	Attack(Combatant)
 	Damage(int)
-	NewTurn()
-	Tick()
-	IsTurnOver() bool
+	NewTurn(ci *CombatInfo)
+	Tick(ci *CombatInfo)
+	IsTurnOver(ci *CombatInfo) bool
 }
 
 func (n *NPC) InitCombat() CombatInfo {
@@ -250,15 +270,15 @@ func (n *NPC) Damage(amt int) {
 	n.HP -= amt
 }
 
-func (n *NPC) NewTurn() {
+func (n *NPC) NewTurn(ci *CombatInfo) {
 
 }
 
-func (n *NPC) Tick() {
+func (n *NPC) Tick(ci *CombatInfo) {
 	n.CombatTick()
 }
 
-func (n *NPC) IsTurnOver() bool {
+func (n *NPC) IsTurnOver(ci *CombatInfo) bool {
 	return true
 }
 
@@ -279,14 +299,15 @@ func (p *Player) Damage(amt int) {
 	p.HP -= amt
 }
 
-func (p *Player) NewTurn() {
+func (p *Player) NewTurn(ci *CombatInfo) {
 	p.AP = 5
+	ci.Timer = MAX_PLAYER_TURN_TIME
 }
 
-func (p *Player) Tick() {
-
+func (p *Player) Tick(ci *CombatInfo) {
+	ci.Timer -= 1
 }
 
-func (p *Player) IsTurnOver() bool {
-	return p.AP <= 0
+func (p *Player) IsTurnOver(ci *CombatInfo) bool {
+	return ci.Timer <= 0 || p.AP <= 0
 }
