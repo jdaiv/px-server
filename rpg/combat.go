@@ -38,9 +38,11 @@ func (z *Zone) CheckCombat() bool {
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
 		log.Printf("zone %s entering combat!", z.Name)
+		z.Dirty = true
 		z.StartCombat()
 	} else if !z.CombatInfo.InCombat && oldVal {
 		log.Printf("zone %s exiting combat", z.Name)
+		z.Dirty = true
 	}
 
 	if z.CombatInfo.InCombat {
