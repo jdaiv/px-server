@@ -15,6 +15,22 @@ type SpecialBlock struct {
 	Consumable int `json:"consumable,omitempty"`
 }
 
+type SkillBlock struct {
+	AttackMelee  Skill `json:"attack_melee"`
+	AttackRanged Skill `json:"attack_ranged"`
+	DefensePhys  Skill `json:"defense_phys"`
+	DefenseMagic Skill `json:"defense_magic"`
+	Dodge        Skill `json:"dodge"`
+	MagicFire    Skill `json:"magic_fire"`
+	MagicIce     Skill `json:"magic_ice"`
+	MagicStone   Skill `json:"magic_stone"`
+}
+
+type Skill struct {
+	Level int `json:"level"`
+	XP    int `json:"xp"`
+}
+
 func (s *StatBlock) ApplyStat(stat string, value int) {
 	switch stat {
 	case "attack_phys":
@@ -59,4 +75,15 @@ func (s StatBlock) MaxHP() int {
 
 func (s StatBlock) MaxAP() int {
 	return 5 + s.Speed
+}
+
+func (s SkillBlock) TotalLevel() int {
+	return s.AttackMelee.Level +
+		s.AttackRanged.Level +
+		s.DefensePhys.Level +
+		s.DefenseMagic.Level +
+		s.Dodge.Level +
+		s.MagicFire.Level +
+		s.MagicIce.Level +
+		s.MagicStone.Level
 }

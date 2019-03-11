@@ -12,10 +12,11 @@ type Player struct {
 	X           int    `json:"x"`
 	Y           int    `json:"y"`
 
-	HP     int       `json:"hp"`
-	AP     int       `json:"ap"`
-	Stats  StatBlock `json:"-"`
-	Timers Timers    `json:"timers"`
+	HP     int        `json:"hp"`
+	AP     int        `json:"ap"`
+	Stats  StatBlock  `json:"stats"`
+	Skills SkillBlock `json:"skills"`
+	Timers Timers     `json:"timers"`
 }
 
 const (
