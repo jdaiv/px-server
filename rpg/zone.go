@@ -76,7 +76,38 @@ func (z *Zone) Tick() {
 	if z.CombatInfo.InCombat {
 		z.CombatTick()
 	} else {
+		for _, p := range z.Players {
+			maxHP := p.Stats.MaxHP()
+			maxAP := p.Stats.MaxAP()
 
+			if p.Timers.HP <= 0 {
+				if p.HP < maxHP {
+					p.HP += 1
+					if p.HP > maxHP {
+						p.HP = maxHP
+					}
+					p.Timers.HP = BASE_HP_REGEN
+					z.Parent.Players.SetDirty(p.Id)
+					z.Dirty = true
+				}
+			} else {
+				p.Timers.HP -= 1
+			}
+
+			if p.Timers.AP <= 0 {
+				if p.AP < maxAP {
+					p.AP += 1
+					if p.AP > maxAP {
+						p.AP = maxAP
+					}
+					p.Timers.AP = BASE_AP_REGEN
+					z.Parent.Players.SetDirty(p.Id)
+					z.Dirty = true
+				}
+			} else {
+				p.Timers.AP -= 1
+			}
+		}
 	}
 }
 

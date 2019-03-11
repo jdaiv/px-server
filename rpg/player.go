@@ -12,9 +12,20 @@ type Player struct {
 	X           int    `json:"x"`
 	Y           int    `json:"y"`
 
-	HP    int       `json:"hp"`
-	AP    int       `json:"ap"`
-	Stats StatBlock `json:"-"`
+	HP     int       `json:"hp"`
+	AP     int       `json:"ap"`
+	Stats  StatBlock `json:"-"`
+	Timers Timers    `json:"timers"`
+}
+
+const (
+	BASE_AP_REGEN = 1
+	BASE_HP_REGEN = 8
+)
+
+type Timers struct {
+	HP int
+	AP int
 }
 
 func (p *Player) Rebuild(base *RPG) {

@@ -205,9 +205,6 @@ func (z *Zone) CombatTick() bool {
 }
 
 func (z *Zone) CheckAPCost(player *Player, cost int) bool {
-	if !z.CombatInfo.InCombat {
-		return true
-	}
 	if player.AP >= cost {
 		player.AP -= cost
 		return true

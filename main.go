@@ -157,7 +157,7 @@ func main() {
 			game.Incoming <- rpg.IncomingMessage{
 				Data: rpg.IncomingMessageData{Type: rpg.ACTION_TICK},
 			}
-			time.Sleep(250 * time.Millisecond)
+			time.Sleep(125 * time.Millisecond)
 		}
 	}()
 
