@@ -27,14 +27,14 @@ type Zone struct {
 }
 
 type ZoneDisplayData struct {
-	Width      int                `json:"width"`
-	Height     int                `json:"height"`
-	Map        []Tile             `json:"map"`
-	Entities   []EntityInfo       `json:"entities"`
-	Players    map[int]PlayerInfo `json:"players"`
-	NPCs       map[int]NPCInfo    `json:"npcs"`
-	Items      map[int]ItemInfo   `json:"items"`
-	CombatInfo ZoneCombatData     `json:"combatInfo"`
+	Width      int            `json:"width"`
+	Height     int            `json:"height"`
+	Map        []Tile         `json:"map"`
+	Entities   []EntityInfo   `json:"entities"`
+	Players    []PlayerInfo   `json:"players"`
+	NPCs       []NPCInfo      `json:"npcs"`
+	Items      []ItemInfo     `json:"items"`
+	CombatInfo ZoneCombatData `json:"combatInfo"`
 }
 
 func NewZone(parent *RPG, name string, def ZoneDef) *Zone {
@@ -126,23 +126,30 @@ func (z *Zone) BuildCollisionMap() {
 }
 
 func (z *Zone) BuildDisplayData() {
-	entities := make([]EntityInfo, 0)
+	entities := make([]EntityInfo, len(z.Entities))
+	idx := 0
 	for _, e := range z.Entities {
-		entities = append(entities, e.GetInfo())
+		entities[idx] = e.GetInfo()
+		idx++
 	}
-	players := make(map[int]PlayerInfo)
+	players := make([]PlayerInfo, len(z.Players))
+	idx = 0
 	for _, p := range z.Players {
-		players[p.Id] = p.GetInfoPublic(z.Parent)
+		players[idx] = p.GetInfo(z.Parent)
+		idx++
 	}
-	items := make(map[int]ItemInfo)
+	items := make([]ItemInfo, len(z.Items))
+	idx = 0
 	for id, _ := range z.Items {
 		if item, ok := z.Parent.Items.Get(id); ok {
-			items[id] = item.GetInfo()
+			items[idx] = item.GetInfo()
+			idx++
 		}
 	}
-	npcs := make(map[int]NPCInfo)
-	for id, n := range z.NPCs {
-		npcs[id] = n.GetInfo()
+	npcs := make([]NPCInfo, len(z.NPCs))
+	for _, n := range z.NPCs {
+		npcs[idx] = n.GetInfo()
+		idx++
 	}
 	z.DisplayData = ZoneDisplayData{
 		Width:      z.Width,

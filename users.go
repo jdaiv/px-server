@@ -17,13 +17,9 @@ const (
 )
 
 type User struct {
-	Id         int      `json:"-"`
-	Name       string   `json:"name"`
-	NameNormal string   `json:"nameNormal"`
-	Data       UserData `json:"userData"`
-}
-
-type UserData struct {
+	Id         int    `json:"id"`
+	Name       string `json:"name"`
+	NameNormal string `json:"nameNormal"`
 }
 
 func createPassword() []byte {
