@@ -147,6 +147,7 @@ func (z *Zone) BuildDisplayData() {
 		}
 	}
 	npcs := make([]NPCInfo, len(z.NPCs))
+	idx = 0
 	for _, n := range z.NPCs {
 		npcs[idx] = n.GetInfo()
 		idx++
