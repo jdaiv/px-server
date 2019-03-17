@@ -35,7 +35,7 @@ func (p *Player) Rebuild(base *RPG) {
 }
 
 func (p *Player) BuildStats(base *RPG) {
-	stats := StatBlock{}
+	stats := p.Skills.BuildStats()
 	for _, itemId := range p.Slots {
 		if itemId < 0 {
 			continue

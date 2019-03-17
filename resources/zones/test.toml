@@ -46,6 +46,24 @@ x = 2
 y = 1
 
 [[Entity]]
+Name = 'item spawner'
+Type = 'item_spawner'
+Position = [3, 0]
+[Entity.Strings]
+item_id = 'dagger'
+[Entity.Ints]
+x = 3
+y = 1
+
+[[Entity]]
+Name = 'weapon sharpener'
+Type = 'item_modifier'
+Position = [4, 0]
+[Entity.Strings]
+item_mod_id = 'sharp'
+target_slot = 'hands'
+
+[[Entity]]
 Type = 'npc_spawner'
 Position = [6, 0]
 [Entity.Strings]

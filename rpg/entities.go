@@ -11,6 +11,7 @@ var entityUseFuncs = map[string]func(*Entity, *Player) (bool, error){
 	"use_sign":     UseSign,
 	"use_door":     UseDoor,
 	"spawn_item":   SpawnItem,
+	"modify_item":  ModifyItem,
 	"spawn_npc":    SpawnNPC,
 	"take_item":    TakeItem,
 	"attack_dummy": AttackDummy,
@@ -108,6 +109,36 @@ func SpawnItem(ent *Entity, player *Player) (bool, error) {
 	ent.Zone.AddItem(itemType, x, y)
 
 	return true, nil
+}
+
+func ModifyItem(ent *Entity, player *Player) (bool, error) {
+	modId, ok := ent.Def.Strings["item_mod_id"]
+	if !ok {
+		return false, errors.New("target item mod not found")
+	}
+	slot, ok := ent.Def.Strings["target_slot"]
+	if !ok {
+		return false, errors.New("target slot not found")
+	}
+	modDef, ok := ent.Zone.Parent.Defs.ItemMods[modId]
+	if !ok {
+		return false, errors.New("item mod not found")
+	}
+
+	if itemId, ok := player.Slots[slot]; ok && itemId > 0 {
+		item, exists := ent.Zone.Parent.Items.Get(itemId)
+		if !exists {
+			return false, errors.New("item not found")
+		}
+		if item.Modded {
+			return false, nil
+		}
+		item.ApplyMod(modDef)
+		ent.Zone.Parent.Items.Save(item)
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func SpawnNPC(ent *Entity, player *Player) (bool, error) {

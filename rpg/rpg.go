@@ -113,6 +113,7 @@ func (g *RPG) HandleMessages() {
 			}
 
 			zone.PostPlayerAction(p)
+			p.BuildStats(g)
 			zone.CheckCombat()
 			zone.BuildCollisionMap()
 

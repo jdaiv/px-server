@@ -32,6 +32,15 @@ type NPC struct {
 	MaxHP     int
 	Alignment string
 	Logic     string
+	Skills    SkillBlock
+	Stats     StatBlock
+	Slots     map[string]NPCItem
+}
+
+type NPCItem struct {
+	Name    string
+	Stats   StatBlock
+	Special SpecialBlock
 }
 
 func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
@@ -43,6 +52,23 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 	// if len(name) <= 0 {
 	// 	name = npcDef.DefaultName
 	// }
+
+	items := make(map[string]NPCItem)
+	for slot, itemName := range npcDef.Slots {
+		if itemName == "" {
+			continue
+		}
+		if itemDef, ok := zone.Parent.Defs.Items[itemName]; ok {
+			items[slot] = NPCItem{
+				itemDef.Name,
+				itemDef.Stats,
+				itemDef.Special,
+			}
+		}
+	}
+
+	stats := npcDef.Skills.BuildStats()
+
 	return &NPC{
 		Zone:      zone,
 		Id:        id,
@@ -54,6 +80,9 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 		MaxHP:     npcDef.HP,
 		Alignment: npcDef.Alignment,
 		Logic:     npcDef.Logic,
+		Skills:    npcDef.Skills,
+		Stats:     stats,
+		Slots:     items,
 	}, nil
 }
 
@@ -73,7 +102,7 @@ func BlobIdle(self *NPC) bool {
 func BlobCombat(self *NPC) bool {
 	for _, p := range self.Zone.Players {
 		if intAbs(int64(self.X-p.X)) <= 1 && intAbs(int64(self.Y-p.Y)) <= 1 {
-			self.Attack(p)
+			self.Zone.DoAttack(self, p)
 			self.Zone.SendEffect("wood_ex", p.X, p.Y)
 			self.Zone.SendEffect("screen_shake", 8, 8)
 			return true

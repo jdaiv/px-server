@@ -77,7 +77,7 @@ func (db *ItemDB) New(def ItemDef) (Item, bool) {
 		MaxQty:     def.MaxQty,
 		Durability: def.Durability,
 		Price:      def.Price,
-		Stats:      ConvertStatMap(def.Stats),
+		Stats:      def.Stats,
 	}
 
 	err := db.DB.QueryRow(`INSERT INTO items (data) VALUES ($1) RETURNING id`, item).Scan(&item.Id)

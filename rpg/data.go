@@ -58,6 +58,8 @@ type NPCDef struct {
 	Alignment string
 	Logic     string
 	HP        int
+	Slots     map[string]string
+	Skills    SkillBlock
 }
 
 type ZoneEntityDef struct {
@@ -83,13 +85,13 @@ type ItemDef struct {
 	MaxQty     int
 	Durability int
 	Price      int
-	Special    []string
-	Stats      map[string]int
+	Special    SpecialBlock
+	Stats      StatBlock
 }
 
 type ItemModDef struct {
 	Name  string
-	Stats map[string]int
+	Stats StatBlock
 }
 
 type SkillDef struct {

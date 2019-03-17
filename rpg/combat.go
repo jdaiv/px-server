@@ -1,6 +1,7 @@
 package rpg
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 )
@@ -22,6 +23,12 @@ type CombatInfo struct {
 	Id         int       `json:"id"`
 	Timer      int       `json:"timer"`
 	Actor      Combatant `json:"-"`
+}
+
+type DamageInfo struct {
+	Amount int    `json:"amount"`
+	Crit   bool   `json:"crit"`
+	Type   string `json:"type"`
 }
 
 func (z *Zone) CheckCombat() bool {
@@ -243,13 +250,31 @@ func (z *Zone) PostCombatAction() {
 	}
 }
 
+func (z *Zone) DoAttack(origin Combatant, target Combatant) {
+	dmg := origin.Attack()
+	target.Damage(dmg)
+	var msg string
+	if dmg.Crit {
+		msg = "%s attacked %s for %d damage (CRITICAL)"
+	} else {
+		msg = "%s attacked %s for %d damage"
+	}
+	z.SendMessage(nil, fmt.Sprintf(msg,
+		origin.GetName(), target.GetName(), dmg.Amount))
+}
+
 type Combatant interface {
+	GetName() string
 	InitCombat() CombatInfo
-	Attack(Combatant)
-	Damage(int)
+	Attack() DamageInfo
+	Damage(DamageInfo)
 	NewTurn(ci *CombatInfo)
 	Tick(ci *CombatInfo)
 	IsTurnOver(ci *CombatInfo) bool
+}
+
+func (n *NPC) GetName() string {
+	return n.Name
 }
 
 func (n *NPC) InitCombat() CombatInfo {
@@ -261,12 +286,12 @@ func (n *NPC) InitCombat() CombatInfo {
 	}
 }
 
-func (n *NPC) Attack(enemy Combatant) {
-	enemy.Damage(5)
+func (n *NPC) Attack() DamageInfo {
+	return n.Stats.RollPhysDamage()
 }
 
-func (n *NPC) Damage(amt int) {
-	n.HP -= amt
+func (n *NPC) Damage(dmg DamageInfo) {
+	n.HP -= dmg.Amount
 }
 
 func (n *NPC) NewTurn(ci *CombatInfo) {
@@ -281,6 +306,10 @@ func (n *NPC) IsTurnOver(ci *CombatInfo) bool {
 	return true
 }
 
+func (p *Player) GetName() string {
+	return p.Name
+}
+
 func (p *Player) InitCombat() CombatInfo {
 	return CombatInfo{
 		Initiative: rand.Intn(20),
@@ -290,16 +319,16 @@ func (p *Player) InitCombat() CombatInfo {
 	}
 }
 
-func (p *Player) Attack(enemy Combatant) {
-	enemy.Damage(5)
+func (p *Player) Attack() DamageInfo {
+	return p.Stats.RollPhysDamage()
 }
 
-func (p *Player) Damage(amt int) {
-	p.HP -= amt
+func (p *Player) Damage(dmg DamageInfo) {
+	p.HP -= dmg.Amount
 }
 
 func (p *Player) NewTurn(ci *CombatInfo) {
-	p.AP = 5
+	p.AP = p.Stats.MaxAP()
 	ci.Timer = MAX_PLAYER_TURN_TIME
 }
 

@@ -10,6 +10,7 @@ type Item struct {
 	Price        int          `json:"price"`
 	Stats        StatBlock    `json:"stats"`
 	SpecialAttrs SpecialBlock `json:"specials"`
+	Modded       bool         `json:"modded"`
 
 	Held     bool   `json:"held"`
 	HeldBy   int    `json:"heldBy"`
@@ -22,7 +23,8 @@ type Item struct {
 
 func (i *Item) ApplyMod(def ItemModDef) {
 	i.Name = def.Name + " " + i.Name
-	// i.ApplyStats(def.Stats)
+	i.Modded = true
+	i.Stats = i.Stats.Add(def.Stats)
 }
 
 func (i *Item) Give(player *Player) {

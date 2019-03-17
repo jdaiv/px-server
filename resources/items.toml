@@ -6,12 +6,13 @@ Type = 'helmet'
 MaxQty = 1
 Durability = 9999
 Price = 10
-Special = ['sunglasses']
+[sunglasses.Special]
+Sunglasses = true
 [sunglasses.requirements]
 cool = 99
 [sunglasses.stats]
-defense_phys = 1
-defense_magic = 1
+DefensePhys = 1
+DefenseMagic = 1
 
 [sword]
 Quality = 2
@@ -21,7 +22,18 @@ MaxQty = 1
 Durability = 9999
 Price = 10
 [sword.stats]
-attack_phys = 5
+AttackPhys = 5
+
+[dagger]
+Quality = 6
+Name = 'crit thing'
+Type = 'melee'
+MaxQty = 1
+Durability = 9999
+Price = 10
+[dagger.Stats]
+CriticalChance = 20
+AttackPhys = -5
 
 [potion]
 Quality = 1
@@ -30,7 +42,7 @@ Type = 'consumable'
 MaxQty = 1
 Durability = 9999
 Price = 10
-Special = ['consumable']
-[potion.requirements]
+[potion.special]
+Consumable = true
 [potion.stats]
 restore_hp = 10

@@ -26,7 +26,9 @@ func (g *RPG) PlayerAttack(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	p.Attack(npc)
+	z.DoAttack(p, npc)
+	p.Skills.AttackMelee.AddXP(5)
+
 	z.SendEffect("wood_ex", npc.X, npc.Y)
 	z.SendEffect("screen_shake", 8, 8)
 }

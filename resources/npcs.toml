@@ -3,3 +3,7 @@
 Alignment = 'hostile'
 Logic = 'blob'
 HP = 20
+[blob.Skills.PhysAttack]
+Level = 1
+[blob.Skills.PhysDefence]
+Level = 4

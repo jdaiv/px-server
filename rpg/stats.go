@@ -1,5 +1,9 @@
 package rpg
 
+import (
+	"math/rand"
+)
+
 type StatBlock struct {
 	AttackPhys     int `json:"attack_phys,omitempty"`
 	AttackMagic    int `json:"attack_magic,omitempty"`
@@ -11,8 +15,8 @@ type StatBlock struct {
 }
 
 type SpecialBlock struct {
-	Sunglasses int `json:"sunglasses,omitempty"`
-	Consumable int `json:"consumable,omitempty"`
+	Sunglasses bool `json:"sunglasses,omitempty"`
+	Consumable bool `json:"consumable,omitempty"`
 }
 
 type SkillBlock struct {
@@ -31,31 +35,24 @@ type Skill struct {
 	XP    int `json:"xp"`
 }
 
-func (s *StatBlock) ApplyStat(stat string, value int) {
-	switch stat {
-	case "attack_phys":
-		s.AttackPhys += value
-	case "attack_magic":
-		s.AttackMagic += value
-	case "defense_phys":
-		s.DefensePhys += value
-	case "defense_magic":
-		s.DefenseMagic += value
-	case "critical_chance":
-		s.CriticalChance += value
-	case "speed":
-		s.Speed += value
-	case "dodge":
-		s.Dodge += value
+func (s SkillBlock) BuildStats() StatBlock {
+	return StatBlock{
+		AttackPhys:     s.AttackMelee.Level + s.AttackRanged.Level,
+		AttackMagic:    s.MagicFire.Level + s.MagicIce.Level + s.MagicStone.Level,
+		DefensePhys:    s.DefensePhys.Level * 2,
+		DefenseMagic:   s.DefenseMagic.Level * 2,
+		CriticalChance: 5,
+		Speed:          5,
+		Dodge:          s.Dodge.Level,
 	}
 }
 
-func ConvertStatMap(stats map[string]int) StatBlock {
-	block := StatBlock{}
-	for stat, value := range stats {
-		block.ApplyStat(stat, value)
+func (s *Skill) AddXP(amt int) {
+	s.XP += amt
+	for s.XP >= 100 {
+		s.Level += 1
+		s.XP -= 100
 	}
-	return block
 }
 
 func (s StatBlock) Add(b StatBlock) StatBlock {
@@ -70,11 +67,11 @@ func (s StatBlock) Add(b StatBlock) StatBlock {
 }
 
 func (s StatBlock) MaxHP() int {
-	return 10
+	return 10 + s.DefensePhys/2
 }
 
 func (s StatBlock) MaxAP() int {
-	return 5 + s.Speed
+	return 1 + s.Speed
 }
 
 func (s SkillBlock) TotalLevel() int {
@@ -86,4 +83,17 @@ func (s SkillBlock) TotalLevel() int {
 		s.MagicFire.Level +
 		s.MagicIce.Level +
 		s.MagicStone.Level
+}
+
+func (s StatBlock) RollPhysDamage() DamageInfo {
+	crit := rand.Intn(100) <= s.CriticalChance
+	variance := (s.AttackPhys / 4)
+	if variance < 2 {
+		variance = 2
+	}
+	dmg := 1 + s.AttackPhys - variance + rand.Intn(variance*2)
+	if crit {
+		dmg *= 2
+	}
+	return DamageInfo{dmg, crit, "slash"}
 }

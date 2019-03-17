@@ -29,6 +29,15 @@ UseFunc = 'spawn_item'
 Strings = ['item_id']
 Ints = ['x', 'y']
 
+[item_modifier]
+DefaultName = 'ITEM_MODIFIER_DEFAULT_NAME'
+Size = [1, 1]
+Usable = true
+UseText = 'activate'
+Blocking = true
+UseFunc = 'modify_item'
+Strings = ['item_mod_id', 'target_slot']
+
 [npc_spawner]
 DefaultName = 'NPC_SPAWNER_DEFAULT_NAME'
 Size = [1, 1]
@@ -38,14 +47,6 @@ Blocking = true
 UseFunc = 'spawn_npc'
 Strings = ['npc_id']
 Ints = ['x', 'y']
-
-[item_bag]
-DefaultName = 'item bag'
-Size = [1, 1]
-Usable = true
-UseText = 'take'
-Blocking = false
-UseFunc = 'take_item'
 
 [dummy]
 DefaultName = 'training dummy'
