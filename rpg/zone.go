@@ -117,7 +117,20 @@ func (z *Zone) BuildCollisionMap() {
 	}
 	for _, e := range z.Entities {
 		if e.RootDef.Blocking {
-			z.CollisionMap[e.X+e.Y*z.Width] = true
+			size := e.RootDef.Size
+			if size[0] == 1 && size[1] == 1 {
+				z.CollisionMap[e.X+e.Y*z.Width] = true
+				continue
+			}
+			for x := 0; x < size[0]; x++ {
+				for y := 0; y < size[1]; y++ {
+					_x := e.X + x
+					_y := e.Y + y
+					if _x >= 0 && _x < z.Width && _y >= 0 && _y <= z.Height {
+						z.CollisionMap[_x+_y*z.Width] = true
+					}
+				}
+			}
 		}
 	}
 	for _, e := range z.NPCs {

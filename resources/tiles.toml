@@ -7,3 +7,6 @@ Blocking = false
 
 [water]
 Blocking = true
+
+[rocks]
+Blocking = true

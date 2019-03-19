@@ -45,6 +45,7 @@ type EntityDef struct {
 	DefaultName   string
 	Draw          string
 	Size          Position
+	ServerOnly    bool
 	Blocking      bool
 	Usable        bool
 	UseFunc       string

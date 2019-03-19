@@ -1,16 +1,16 @@
 
 SpawnPoint = [1, 1]
-Width = 6
+Width = 11
 Height = 8
 Map = [
-    'default', 'default', 'default', 'default', 'default', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'grass', 'grass', 'grass', 'grass', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
-    'default', 'water', 'water', 'water', 'water', 'default',
+    'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
+    'default', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'default',
 ]
 
 [[Entity]]
@@ -21,9 +21,21 @@ Position = [3, 0]
 message = 'Welcome!'
 
 [[Entity]]
+Name = 'house'
+Type = 'house'
+Position = [5, 0]
+
+[[Entity]]
+Name = 'shop'
+Type = 'door'
+Position = [6, 1]
+[Entity.Strings]
+target_zone = 'house'
+
+[[Entity]]
 Name = 'exit'
 Type = 'door'
-Position = [5, 3]
+Position = [10, 3]
 [Entity.Strings]
 target_zone = 'test'
 [Entity.Ints]
