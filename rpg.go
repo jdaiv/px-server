@@ -25,7 +25,7 @@ func handleGameAction(source *Client, data []byte) (interface{}, error) {
 }
 
 func handleGameEditAction(source *Client, data []byte) (interface{}, error) {
-	if !source.Authenticated {
+	if !source.Authenticated || !source.User.SuperUser {
 		return nil, ErrorUnauthenticated
 	}
 
