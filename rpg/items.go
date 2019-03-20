@@ -16,9 +16,9 @@ type Item struct {
 	HeldBy   int    `json:"heldBy"`
 	Equipped string `json:"equipped"`
 
-	CurrentZone string `json:"currentZone"`
-	X           int    `json:"x"`
-	Y           int    `json:"y"`
+	CurrentZone int `json:"currentZone"`
+	X           int `json:"x"`
+	Y           int `json:"y"`
 }
 
 func (i *Item) ApplyMod(def ItemModDef) {
@@ -31,5 +31,5 @@ func (i *Item) Give(player *Player) {
 	i.Held = true
 	i.HeldBy = player.Id
 	i.Equipped = ""
-	i.CurrentZone = ""
+	i.CurrentZone = -1
 }

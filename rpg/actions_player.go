@@ -16,5 +16,5 @@ func (g *RPG) PlayerMove(p *Player, z *Zone, params ActionParams) {
 	}
 	p.X = x
 	p.Y = y
-	z.Dirty = true
+	g.Zones.SetDirty(z.Id)
 }

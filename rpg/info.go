@@ -71,22 +71,25 @@ func (p Player) GetSlotInfo(base *RPG) map[string]ItemInfo {
 }
 
 type EntityInfo struct {
-	Id       int               `json:"id"`
-	Name     string            `json:"name"`
-	Type     string            `json:"type"`
-	X        int               `json:"x"`
-	Y        int               `json:"y"`
-	Usable   bool              `json:"usable"`
-	UseText  string            `json:"useText"`
-	Blocking bool              `json:"-"`
-	Strings  map[string]string `json:"strings"`
+	Id       int                    `json:"id"`
+	Name     string                 `json:"name"`
+	Type     string                 `json:"type"`
+	X        int                    `json:"x"`
+	Y        int                    `json:"y"`
+	Usable   bool                   `json:"usable"`
+	UseText  string                 `json:"useText"`
+	Blocking bool                   `json:"-"`
+	Fields   map[string]interface{} `json:"fields"`
 }
 
 func (e Entity) GetInfo() EntityInfo {
-	exportedStrings := make(map[string]string)
-	for _, key := range e.RootDef.ExportStrings {
-		if v, ok := e.Def.Strings[key]; ok {
-			exportedStrings[key] = v
+	exported := make(map[string]interface{})
+	for _, f := range e.RootDef.Fields {
+		if !f.Export {
+			continue
+		}
+		if v, ok := e.Fields[f.Name]; ok {
+			exported[f.Name] = v
 		}
 	}
 	return EntityInfo{
@@ -98,7 +101,7 @@ func (e Entity) GetInfo() EntityInfo {
 		Usable:   e.RootDef.Usable,
 		UseText:  e.RootDef.UseText,
 		Blocking: e.RootDef.Blocking,
-		Strings:  exportedStrings,
+		Fields:   exported,
 	}
 }
 

@@ -7,7 +7,9 @@ Usable = true
 UseText = 'read'
 Blocking = true
 UseFunc = 'use_sign'
-Strings = ['message']
+[[sign.fields]]
+Name = 'message'
+Type = 'string'
 
 [door]
 DefaultName = 'DOOR_DEFAULT_NAME'
@@ -16,8 +18,15 @@ Usable = true
 UseText = 'enter'
 Blocking = true
 UseFunc = 'use_door'
-Strings = ['target_zone']
-Ints = ['x', 'y']
+[[door.fields]]
+Name = 'target_zone'
+Type = 'zone'
+[[door.fields]]
+Name = 'x'
+Type = 'int'
+[[door.fields]]
+Name = 'y'
+Type = 'int'
 
 [item_spawner]
 DefaultName = 'ITEM_SPAWNER_DEFAULT_NAME'
@@ -26,8 +35,15 @@ Usable = true
 UseText = 'activate'
 Blocking = true
 UseFunc = 'spawn_item'
-Strings = ['item_id']
-Ints = ['x', 'y']
+[[item_spawner.fields]]
+Name = 'target_zone'
+Type = 'item'
+[[item_spawner.fields]]
+Name = 'x'
+Type = 'int'
+[[item_spawner.fields]]
+Name = 'y'
+Type = 'int'
 
 [item_modifier]
 DefaultName = 'ITEM_MODIFIER_DEFAULT_NAME'
@@ -36,7 +52,12 @@ Usable = true
 UseText = 'activate'
 Blocking = true
 UseFunc = 'modify_item'
-Strings = ['item_mod_id', 'target_slot']
+[[item_modifier.fields]]
+Name = 'item_mod'
+Type = 'item_mod'
+[[item_modifier.fields]]
+Name = 'target_slot'
+Type = 'slot'
 
 [npc_spawner]
 DefaultName = 'NPC_SPAWNER_DEFAULT_NAME'
@@ -45,8 +66,15 @@ Usable = true
 UseText = 'activate'
 Blocking = true
 UseFunc = 'spawn_npc'
-Strings = ['npc_id']
-Ints = ['x', 'y']
+[[npc_spawner.fields]]
+Name = 'npc'
+Type = 'npc'
+[[npc_spawner.fields]]
+Name = 'x'
+Type = 'int'
+[[npc_spawner.fields]]
+Name = 'y'
+Type = 'int'
 
 [dummy]
 DefaultName = 'training dummy'
@@ -60,8 +88,10 @@ UseFunc = 'attack_dummy'
 DefaultName = 'corpse'
 Size = [1, 1]
 Blocking = false
-Strings = ['type']
-ExportStrings = ['type']
+[[corpse.fields]]
+Name = 'target_zone'
+Type = 'type'
+Export = true
 
 [house]
 DefaultName = 'house'

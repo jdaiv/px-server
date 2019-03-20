@@ -9,9 +9,7 @@ import (
 type Position [2]int
 
 type Definitions struct {
-	RPG      RPGDef
-	Zones    map[string]ZoneDef
-	Tiles    map[string]TileDef
+	Tiles    []TileDef
 	Entities map[string]EntityDef
 	NPCs     map[string]NPCDef
 	Items    map[string]ItemDef
@@ -19,64 +17,38 @@ type Definitions struct {
 	Skills   map[string]SkillDef
 }
 
-type RPGDef struct {
-	StartingZone string
-	Zones        map[string]ZoneInfoDef
-}
-
-type ZoneInfoDef struct {
-	Enabled bool
-}
-
-type ZoneDef struct {
-	SpawnPoint Position
-	Width      int
-	Height     int
-	Map        []string
-	Entity     []ZoneEntityDef
-	NPC        []ZoneNPCDef
-}
-
 type TileDef struct {
-	Blocking bool
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	Blocking bool   `json:"blocking"`
 }
 
 type EntityDef struct {
-	DefaultName   string
-	Draw          string
-	Size          Position
-	ServerOnly    bool
-	Blocking      bool
-	Usable        bool
-	UseFunc       string
-	UseText       string
-	Strings       []string
-	ExportStrings []string
-	Ints          []string
+	DefaultName string
+	Draw        string
+	Size        Position
+	ServerOnly  bool
+	Blocking    bool
+	Usable      bool
+	UseFunc     string
+	UseText     string
+	Fields      []EntityField
+}
+
+type EntityField struct {
+	Name    string
+	Type    string
+	Export  bool
+	Default interface{}
 }
 
 type NPCDef struct {
-	Alignment string
-	Logic     string
-	HP        int
-	Slots     map[string]string
-	Skills    SkillBlock
-}
-
-type ZoneEntityDef struct {
-	Ref      string
-	Name     string
-	Type     string
-	Position Position
-	Strings  map[string]string
-	Ints     map[string]int
-}
-
-type ZoneNPCDef struct {
-	Ref      string
-	Name     string
-	Type     string
-	Position Position
+	DefaultName string
+	Alignment   string
+	Logic       string
+	HP          int
+	Slots       map[string]string
+	Skills      SkillBlock
 }
 
 type ItemDef struct {
@@ -102,15 +74,15 @@ type SkillDef struct {
 func LoadDefinitions(dir string) (*Definitions, error) {
 	def := Definitions{}
 
-	if _, err := toml.DecodeFile(dir+"game.toml", &def.RPG); err != nil {
-		log.Printf("[rpg/definitions] error loading root definitions: %v", err)
-		return nil, err
-	}
-
-	if _, err := toml.DecodeFile(dir+"tiles.toml", &def.Tiles); err != nil {
+	tiles := struct{ Tile []TileDef }{}
+	if _, err := toml.DecodeFile(dir+"tiles.toml", &tiles); err != nil {
 		log.Printf("[rpg/definitions] error loading tile definitions: %v", err)
 		return nil, err
 	}
+	for i := range tiles.Tile {
+		tiles.Tile[i].Id = i
+	}
+	def.Tiles = tiles.Tile
 
 	if _, err := toml.DecodeFile(dir+"entities.toml", &def.Entities); err != nil {
 		log.Printf("[rpg/definitions] error loading tile definitions: %v", err)
@@ -120,16 +92,6 @@ func LoadDefinitions(dir string) (*Definitions, error) {
 	if _, err := toml.DecodeFile(dir+"npcs.toml", &def.NPCs); err != nil {
 		log.Printf("[rpg/definitions] error loading npc definitions: %v", err)
 		return nil, err
-	}
-
-	def.Zones = make(map[string]ZoneDef)
-	for z := range def.RPG.Zones {
-		zone := ZoneDef{}
-		if _, err := toml.DecodeFile(dir+"zones/"+z+".toml", &zone); err != nil {
-			log.Printf("[rpg/definitions] error loading zone (%s) definition: %v", z, err)
-			return nil, err
-		}
-		def.Zones[z] = zone
 	}
 
 	if _, err := toml.DecodeFile(dir+"items.toml", &def.Items); err != nil {

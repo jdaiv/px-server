@@ -98,7 +98,7 @@ func (db *ItemDB) Get(id int) (Item, bool) {
 }
 
 // Gets an item by ID, while checking it's in a zone.
-func (db *ItemDB) GetInZone(id int, zone string) (item Item, ok bool) {
+func (db *ItemDB) GetInZone(id int, zone int) (item Item, ok bool) {
 	// db.log.Printf("Getting item %d", id)
 	item, ok = db.items[id]
 	ok = ok && item.CurrentZone == zone
@@ -147,7 +147,7 @@ func (db *ItemDB) LoadIntoZone(zone *Zone) {
 	zone.Items = make(map[int]bool)
 
 	for id, item := range db.items {
-		if item.Held || item.CurrentZone != zone.Name {
+		if item.Held || item.CurrentZone != zone.Id {
 			continue
 		}
 		zone.Items[id] = true

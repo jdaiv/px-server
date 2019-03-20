@@ -19,6 +19,8 @@ const (
 	ACTION_UPDATE_PLAYER = "player_update"
 	ACTION_CHAT          = "chat_message"
 	ACTION_EFFECT        = "play_effect"
+	// special actions
+	ACTION_EDIT = "edit"
 )
 
 var PlayerIncomingActions = map[string]bool{

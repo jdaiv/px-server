@@ -26,12 +26,12 @@ func (g *RPG) PlayerUse(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	needsUpdate, err := ent.Use(p)
+	needsUpdate, err := ent.Use(z, p)
 	if err != nil {
 		log.Printf("[rpg/zone/%s/use] failed to use ent %d (%s): %v", z.Name, entId, ent.Type, err)
 	}
 
 	if needsUpdate {
-		z.Dirty = true
+		g.Zones.SetDirty(z.Id)
 	}
 }

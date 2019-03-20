@@ -7,7 +7,7 @@ import (
 
 type RPG struct {
 	Defs    *Definitions
-	Zones   map[string]*Zone
+	Zones   *ZoneDB
 	Players *PlayerDB
 	Items   *ItemDB
 
@@ -23,7 +23,7 @@ type IncomingMessage struct {
 
 type OutgoingMessage struct {
 	PlayerId int                    `json:"-"`
-	Zone     string                 `json:"-"`
+	Zone     int                    `json:"-"`
 	Type     string                 `json:"type"`
 	Params   map[string]interface{} `json:"params"`
 }
@@ -36,6 +36,7 @@ type IncomingMessageData struct {
 type DisplayData struct {
 	Zone   ZoneDisplayData `json:"zone"`
 	Player PlayerInfo      `json:"player"`
+	Defs   *Definitions    `json:"defs"`
 }
 
 func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
@@ -46,18 +47,16 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 
 	rpg := &RPG{
 		Defs:     defs,
-		Zones:    make(map[string]*Zone),
 		Players:  NewPlayerDB(db),
 		Items:    NewItemDB(db),
+		Zones:    NewZoneDB(db),
 		Incoming: make(chan IncomingMessage),
 		Outgoing: make(chan OutgoingMessage),
 		DB:       db,
 	}
 
-	for k, v := range defs.Zones {
-		if defs.RPG.Zones[k].Enabled {
-			rpg.Zones[k] = NewZone(rpg, k, v)
-		}
+	for _, z := range rpg.Zones.AllZones {
+		z.Init(rpg)
 	}
 
 	return rpg, nil
@@ -74,18 +73,25 @@ func (g *RPG) HandleMessages() {
 			g.PlayerLeave(incoming.PlayerId)
 		} else {
 			p := g.Players.Get(incoming.PlayerId)
-			zone, ok := g.Zones[p.CurrentZone]
+			zone, ok := g.Zones.Get(p.CurrentZone)
 			if !ok {
-				log.Printf("couldn't find zone %s for player %d (%s), placing at default", p.CurrentZone, p.Id, p.Name)
-				p.CurrentZone = ""
-				g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+				log.Printf("couldn't find zone %d for player %d (%s), placing at default", p.CurrentZone, p.Id, p.Name)
+				p.CurrentZone = 1
+				zone, _ := g.Zones.Get(1)
+				zone.AddPlayer(p, -1, -1)
 				g.Outgoing <- OutgoingMessage{
 					PlayerId: p.Id,
-					Zone:     g.Defs.RPG.StartingZone,
+					Zone:     1,
 					Type:     ACTION_UPDATE,
 				}
 				continue
 			}
+
+			if incoming.Data.Type == ACTION_EDIT {
+				g.HandleEdit(zone, incoming.Data.Params)
+				continue
+			}
+
 			if !zone.CanAct(p) {
 				log.Printf("player tried to act out of order %s", p.Name)
 				continue
@@ -119,28 +125,26 @@ func (g *RPG) HandleMessages() {
 
 			g.Players.Commit()
 
-			if zone.Dirty {
+			if g.Zones.IsDirty(p.CurrentZone) {
 				g.Outgoing <- OutgoingMessage{
 					PlayerId: p.Id,
 					Zone:     p.CurrentZone,
 					Type:     ACTION_UPDATE,
 				}
-				zone.Dirty = false
 			}
 			if p.CurrentZone != oldZone {
 				g.Outgoing <- OutgoingMessage{
 					Zone: oldZone,
 					Type: ACTION_UPDATE,
 				}
-				newZone := g.Zones[p.CurrentZone]
-				newZone.Dirty = false
+				g.Zones.SetDirty(p.CurrentZone)
 			}
 		}
 	}
 }
 
 func (g *RPG) PrepareDisplay() {
-	for _, z := range g.Zones {
+	for _, z := range g.Zones.AllZones {
 		z.BuildDisplayData()
 	}
 }
@@ -148,7 +152,7 @@ func (g *RPG) PrepareDisplay() {
 func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 	p := g.Players.Get(pId)
 
-	zone, ok := g.Zones[p.CurrentZone]
+	zone, ok := g.Zones.Get(p.CurrentZone)
 	if !ok {
 		return DisplayData{}
 	}
@@ -156,20 +160,21 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 	return DisplayData{
 		Player: p.GetInfo(g),
 		Zone:   zone.DisplayData,
+		Defs:   g.Defs,
 	}
 }
 
 func (g *RPG) Tick() {
-	for name, z := range g.Zones {
+	for id, z := range g.Zones.AllZones {
 		z.Tick()
-		if z.Dirty {
+		if g.Zones.IsDirty(id) {
 			g.Outgoing <- OutgoingMessage{
-				Zone: name,
+				Zone: id,
 				Type: ACTION_UPDATE,
 			}
-			z.Dirty = false
 		}
 	}
+	g.Zones.Commit()
 }
 
 func (g *RPG) PlayerJoin(msg IncomingMessage) {
@@ -190,10 +195,11 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		p.HP = p.Stats.MaxHP()
 	}
 
-	if _, hasZone := g.Zones[p.CurrentZone]; hasZone {
-		g.Zones[p.CurrentZone].AddPlayer(p, p.X, p.Y)
+	if z, hasZone := g.Zones.Get(p.CurrentZone); hasZone {
+		z.AddPlayer(p, p.X, p.Y)
 	} else {
-		g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+		zone, _ := g.Zones.Get(1)
+		zone.AddPlayer(p, -1, -1)
 		g.Players.SetDirty(p.Id)
 	}
 
@@ -208,46 +214,53 @@ func (g *RPG) PlayerLeave(id int) {
 	p := g.Players.Get(id)
 	zone := p.CurrentZone
 	g.Players.SetDirty(id)
-	g.Zones[zone].RemovePlayer(p)
+	if z, ok := g.Zones.Get(p.CurrentZone); ok {
+		z.RemovePlayer(p)
 
-	g.Outgoing <- OutgoingMessage{
-		PlayerId: id,
-		Zone:     zone,
-		Type:     ACTION_UPDATE,
+		g.Outgoing <- OutgoingMessage{
+			PlayerId: id,
+			Zone:     zone,
+			Type:     ACTION_UPDATE,
+		}
 	}
 }
 
-func (g *RPG) SaveAllPlayers() {
-	log.Printf("saving all players")
+func (g *RPG) SaveAll() {
+	log.Printf("saving all")
 	g.Players.Commit()
+	g.Zones.Commit()
 }
 
 func (g *RPG) KillPlayer(p *Player) {
-	zone := g.Zones[p.CurrentZone]
-	zone.AddEntity(ZoneEntityDef{
-		Name:     "corpse of " + p.Name,
-		Position: Position{p.X, p.Y},
-		Type:     "corpse",
-		Strings:  map[string]string{"type": "player"},
-	}, false)
-	zone.Dirty = true
+	zone, ok := g.Zones.Get(p.CurrentZone)
+	if ok {
+		ent, err := zone.AddEntity("corpse", p.X, p.Y, false)
+		if err == nil {
+			ent.Name = "corpse of " + p.Name
+			ent.Fields["type"] = "player"
+		}
+		g.Zones.SetDirty(p.CurrentZone)
+	}
 	g.PlayerReset(p)
 }
 
 func (g *RPG) KillNPC(z *Zone, n *NPC) {
 	delete(z.NPCs, n.Id)
-	z.AddEntity(ZoneEntityDef{
-		Name:     "corpse of " + n.Name,
-		Position: Position{n.X, n.Y},
-		Type:     "corpse",
-		Strings:  map[string]string{"type": n.Type},
-	}, false)
+	ent, err := z.AddEntity("corpse", n.X, n.Y, false)
+	if err == nil {
+		ent.Name = "corpse of " + n.Name
+		ent.Fields["type"] = n.Type
+	}
+	g.Zones.SetDirty(z.Id)
 }
 
 func (g *RPG) PlayerReset(p *Player) {
-	g.Zones[p.CurrentZone].RemovePlayer(p)
+	if z, ok := g.Zones.Get(p.CurrentZone); ok {
+		z.RemovePlayer(p)
+	}
 	p.HP = p.Stats.MaxHP()
-	g.Zones[g.Defs.RPG.StartingZone].AddPlayer(p, -1, -1)
+	zone, _ := g.Zones.Get(1)
+	zone.AddPlayer(p, -1, -1)
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: p.Id,

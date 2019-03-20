@@ -43,15 +43,11 @@ type NPCItem struct {
 	Special SpecialBlock
 }
 
-func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
-	npcDef, ok := zone.Parent.Defs.NPCs[def.Type]
+func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
+	npcDef, ok := zone.Parent.Defs.NPCs[npcType]
 	if !ok {
 		return nil, errors.New("npc missing")
 	}
-	name := def.Name
-	// if len(name) <= 0 {
-	// 	name = npcDef.DefaultName
-	// }
 
 	items := make(map[string]NPCItem)
 	for slot, itemName := range npcDef.Slots {
@@ -72,10 +68,10 @@ func NewNPC(zone *Zone, id int, def ZoneNPCDef) (*NPC, error) {
 	return &NPC{
 		Zone:      zone,
 		Id:        id,
-		Name:      name,
-		Type:      def.Type,
-		X:         def.Position[0],
-		Y:         def.Position[1],
+		Name:      npcDef.DefaultName,
+		Type:      npcType,
+		X:         x,
+		Y:         y,
 		HP:        npcDef.HP,
 		MaxHP:     npcDef.HP,
 		Alignment: npcDef.Alignment,

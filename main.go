@@ -83,7 +83,7 @@ func main() {
 	go func() {
 		for {
 			outgoing := <-game.Outgoing
-			zone, ok := game.Zones[outgoing.Zone]
+			zone, ok := game.Zones.Get(outgoing.Zone)
 			if !ok {
 				continue
 			}
@@ -182,7 +182,7 @@ func main() {
 
 	<-c
 
-	game.SaveAllPlayers()
+	game.SaveAll()
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)

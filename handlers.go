@@ -10,14 +10,15 @@ import (
 type ActionStr string
 
 const (
-	ACTION_CLOSE        = "close"
-	ACTION_PING         = "ping"
-	ACTION_LOGIN        = "login"
-	ACTION_CREATE_USER  = "create_user"
-	ACTION_CHAT_MESSAGE = "chat_message"
-	ACTION_LIST_USERS   = "list_users"
-	ACTION_GAME_STATE   = "game_state"
-	ACTION_GAME_ACTION  = "game_action"
+	ACTION_CLOSE            = "close"
+	ACTION_PING             = "ping"
+	ACTION_LOGIN            = "login"
+	ACTION_CREATE_USER      = "create_user"
+	ACTION_CHAT_MESSAGE     = "chat_message"
+	ACTION_LIST_USERS       = "list_users"
+	ACTION_GAME_STATE       = "game_state"
+	ACTION_GAME_ACTION      = "game_action"
+	ACTION_GAME_EDIT_ACTION = "game_edit"
 )
 
 type WSMessage struct {
@@ -49,8 +50,9 @@ var wsRouter = map[ActionStr]WSHandler{
 	ACTION_CHAT_MESSAGE: handleChatMessage,
 	ACTION_LIST_USERS:   handleListUsers,
 
-	ACTION_GAME_STATE:  handleGameState,
-	ACTION_GAME_ACTION: handleGameAction,
+	// ACTION_GAME_STATE:       handleGameState,
+	ACTION_GAME_ACTION:      handleGameAction,
+	ACTION_GAME_EDIT_ACTION: handleGameEditAction,
 }
 
 func parseIncoming(data []byte, v interface{}) error {

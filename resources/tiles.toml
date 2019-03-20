@@ -1,12 +1,22 @@
 
-[default]
+[[tile]]
+Name = 'blank'
 Blocking = false
-
-[grass]
+[[tile]]
+Name = 'blank'
 Blocking = false
-
-[water]
+[[tile]]
+Name = 'default'
+Blocking = false
+[[tile]]
+Name = 'grass'
+Blocking = false
+[[tile]]
+Name = 'water'
 Blocking = true
-
-[rocks]
+[[tile]]
+Name = 'trees'
+Blocking = true
+[[tile]]
+Name = 'rocks'
 Blocking = true

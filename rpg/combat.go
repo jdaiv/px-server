@@ -45,11 +45,11 @@ func (z *Zone) CheckCombat() bool {
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
 		log.Printf("zone %s entering combat!", z.Name)
-		z.Dirty = true
+		z.Parent.Zones.SetDirty(z.Id)
 		z.StartCombat()
 	} else if !z.CombatInfo.InCombat && oldVal {
 		log.Printf("zone %s exiting combat", z.Name)
-		z.Dirty = true
+		z.Parent.Zones.SetDirty(z.Id)
 	}
 
 	if z.CombatInfo.InCombat {
@@ -185,7 +185,7 @@ func (z *Zone) NextCombatant() {
 	ci.Current = next
 	ci.Combatants[next].Actor.NewTurn(ci.Combatants[next])
 	z.AddDelay(4)
-	z.Dirty = true
+	z.Parent.Zones.SetDirty(z.Id)
 }
 
 func (z *Zone) CombatTick() bool {
@@ -195,7 +195,7 @@ func (z *Zone) CombatTick() bool {
 		return false
 	}
 
-	z.Dirty = true
+	z.Parent.Zones.SetDirty(z.Id)
 
 	if ci.Waiting {
 		if ci.Delay > 0 {

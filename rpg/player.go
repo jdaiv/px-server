@@ -8,9 +8,9 @@ type Player struct {
 	Slots     map[string]int `json:"-"`
 	Inventory map[int]bool   `json:"-"`
 
-	CurrentZone string `json:"currentZone"`
-	X           int    `json:"x"`
-	Y           int    `json:"y"`
+	CurrentZone int `json:"currentZone"`
+	X           int `json:"x"`
+	Y           int `json:"y"`
 
 	HP     int        `json:"hp"`
 	AP     int        `json:"ap"`

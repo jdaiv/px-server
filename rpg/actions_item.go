@@ -9,7 +9,7 @@ func (g *RPG) PlayerTakeItem(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	item, ok := g.Items.GetInZone(itemId, z.Name)
+	item, ok := g.Items.GetInZone(itemId, z.Id)
 	if !ok {
 		log.Printf("[rpg/zone/%s/take_item] couldn't find item %d", z.Name, itemId)
 		return
@@ -31,7 +31,7 @@ func (g *RPG) PlayerTakeItem(p *Player, z *Zone, params ActionParams) {
 	delete(z.Items, itemId)
 	p.Rebuild(g)
 
-	z.Dirty = true
+	g.Zones.SetDirty(z.Id)
 }
 
 func (g *RPG) PlayerEquipItem(p *Player, zone *Zone, params ActionParams) {
@@ -70,6 +70,8 @@ func (g *RPG) PlayerDropItem(p *Player, zone *Zone, params ActionParams) {
 	}
 
 	dropped := p.DropItem(zone, itemId)
-	zone.Dirty = zone.Dirty || dropped
+	if dropped {
+		g.Zones.SetDirty(zone.Id)
+	}
 	p.Rebuild(g)
 }
