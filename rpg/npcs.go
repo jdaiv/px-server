@@ -22,7 +22,7 @@ var npcCombatLogicFuncs = map[string]func(*NPC) bool{
 }
 
 type NPC struct {
-	Zone      *Zone
+	Zone      *Zone `json:"-"`
 	Id        int
 	Name      string
 	Type      string
