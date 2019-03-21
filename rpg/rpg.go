@@ -214,7 +214,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		z.AddPlayer(p, p.X, p.Y)
 	} else {
 		zone, _ := g.Zones.Get(1)
-		zone.AddPlayer(p, -1, -1)
+		zone.AddPlayer(p, 0, 0)
 		g.Players.SetDirty(p.Id)
 	}
 

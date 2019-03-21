@@ -294,17 +294,8 @@ func (z *Zone) SendEffect(effectType string, x, y int) {
 func (z *Zone) AddPlayer(player *Player, x, y int) {
 	player.CurrentZone = z.Id
 
-	if x >= 0 {
-		player.X = x
-	} else {
-		player.X = z.SpawnPoint[0]
-	}
-
-	if y >= 0 {
-		player.Y = y
-	} else {
-		player.Y = z.SpawnPoint[1]
-	}
+	player.X = x
+	player.Y = y
 
 	z.Players[player.Id] = player
 	z.CheckCombat()
