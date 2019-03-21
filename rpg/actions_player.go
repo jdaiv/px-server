@@ -6,7 +6,14 @@ func (g *RPG) PlayerMove(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	x, y, ok := z.Move(p.X, p.Y, direction)
+	var x int
+	var y int
+	if p.Editing {
+		x, y, ok = z.MoveNoclip(p.X, p.Y, direction)
+	} else {
+		x, y, ok = z.Move(p.X, p.Y, direction)
+	}
+
 	if !ok {
 		return
 	}

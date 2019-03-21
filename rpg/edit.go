@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
+func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 	log.Printf("START EDIT")
 
 	editType, ok := params.getString("type")
@@ -14,10 +14,22 @@ func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
 		return
 	}
 
+	if !player.Editing {
+		if editType == "enable" {
+			player.Editing = true
+			log.Printf("%s ENABLED", player.Name)
+		}
+		return
+	}
+
 	log.Printf("EDIT DATA: %v", params)
 
 	updated := false
 	switch editType {
+	case "disable":
+		player.Editing = false
+		log.Printf("%s DISABLED", player.Name)
+		return
 	case "tile":
 		log.Printf("EDIT TYPE: TILE")
 		x, ok := params.getInt("x")

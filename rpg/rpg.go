@@ -88,7 +88,7 @@ func (g *RPG) HandleMessages() {
 			}
 
 			if incoming.Data.Type == ACTION_EDIT {
-				g.HandleEdit(zone, incoming.Data.Params)
+				g.HandleEdit(p, zone, incoming.Data.Params)
 				continue
 			}
 

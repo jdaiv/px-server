@@ -15,8 +15,9 @@ func uncompactCoords(c uint64) (int, int) {
 }
 
 type tile struct {
-	Tile     int  `json:"id"`
-	Blocking bool `json:"blocking"`
+	Tile        int  `json:"id"`
+	Blocking    bool `json:"-"`
+	BlockingEnt bool `json:"-"`
 }
 
 type ZoneMap struct {
@@ -24,12 +25,12 @@ type ZoneMap struct {
 	MaxX  int
 	MinY  int
 	MaxY  int
-	Tiles map[uint64]tile
+	Tiles map[uint64]*tile
 }
 
 func NewZoneMap(width, height int, fill TileDef) *ZoneMap {
 	newMap := ZoneMap{
-		Tiles: make(map[uint64]tile),
+		Tiles: make(map[uint64]*tile),
 	}
 
 	for x := 0; x < width; x++ {
@@ -54,21 +55,21 @@ func (m *ZoneMap) SetTile(x, y int, t TileDef) {
 	if y > m.MaxY {
 		m.MaxY = y
 	}
-	m.Tiles[compactCoords(x, y)] = tile{t.Id, t.Blocking}
+	m.Tiles[compactCoords(x, y)] = &tile{t.Id, t.Blocking, false}
 }
 
 func (m *ZoneMap) SetBlocking(x, y int, blocking bool) {
 	if t, ok := m.Tiles[compactCoords(x, y)]; ok {
-		t.Blocking = true
+		t.BlockingEnt = true
 	}
 }
 
 func (m *ZoneMap) IsBlocking(x, y int) bool {
 	t, ok := m.Tiles[compactCoords(x, y)]
-	return !ok || t.Blocking
+	return !ok || t.Blocking || t.BlockingEnt
 }
 
-func (m *ZoneMap) GetTile(x, y int) (tile, bool) {
+func (m *ZoneMap) GetTile(x, y int) (*tile, bool) {
 	t, ok := m.Tiles[compactCoords(x, y)]
 	return t, ok
 }

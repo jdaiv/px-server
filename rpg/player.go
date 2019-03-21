@@ -17,6 +17,8 @@ type Player struct {
 	Stats  StatBlock  `json:"stats"`
 	Skills SkillBlock `json:"skills"`
 	Timers Timers     `json:"timers"`
+
+	Editing bool `json:"-"`
 }
 
 const (

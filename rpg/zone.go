@@ -24,15 +24,15 @@ type Zone struct {
 }
 
 type ZoneDisplayData struct {
-	Name       string          `json:"name"`
-	Width      int             `json:"width"`
-	Height     int             `json:"height"`
-	Map        map[string]tile `json:"map"`
-	Entities   []EntityInfo    `json:"entities"`
-	Players    []PlayerInfo    `json:"players"`
-	NPCs       []NPCInfo       `json:"npcs"`
-	Items      []ItemInfo      `json:"items"`
-	CombatInfo ZoneCombatData  `json:"combatInfo"`
+	Name       string           `json:"name"`
+	Width      int              `json:"width"`
+	Height     int              `json:"height"`
+	Map        map[string]*tile `json:"map"`
+	Entities   []EntityInfo     `json:"entities"`
+	Players    []PlayerInfo     `json:"players"`
+	NPCs       []NPCInfo        `json:"npcs"`
+	Items      []ItemInfo       `json:"items"`
+	CombatInfo ZoneCombatData   `json:"combatInfo"`
 }
 
 func (z *Zone) Init(rpg *RPG) {
@@ -107,6 +107,10 @@ func (z *Zone) Tick() {
 }
 
 func (z *Zone) BuildCollisionMap() {
+	for _, t := range z.Map.Tiles {
+		t.Blocking = z.Parent.Defs.Tiles[t.Tile].Blocking
+		t.BlockingEnt = false
+	}
 	for _, e := range z.Entities {
 		if e.RootDef.Blocking {
 			size := e.RootDef.Size
@@ -125,7 +129,7 @@ func (z *Zone) BuildCollisionMap() {
 }
 
 func (z *Zone) BuildDisplayData() {
-	tiles := make(map[string]tile)
+	tiles := make(map[string]*tile)
 	for i, t := range z.Map.Tiles {
 		x, y := uncompactCoords(i)
 		tiles[fmt.Sprintf("%d,%d", x, y)] = t
@@ -343,6 +347,24 @@ func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
 	}
 
 	return _x, _y, (x != _x || y != _y)
+}
+
+func (z *Zone) MoveNoclip(x, y int, direction string) (int, int, bool) {
+	_x := x
+	_y := y
+
+	switch direction {
+	case "N":
+		_y += 1
+	case "S":
+		_y -= 1
+	case "E":
+		_x += 1
+	case "W":
+		_x -= 1
+	}
+
+	return _x, _y, true
 }
 
 // thanks http://cavaliercoder.com/blog/optimized-abs-for-int64-in-go.html
