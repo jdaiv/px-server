@@ -82,6 +82,7 @@ func LoadDefinitions(dir string) (*Definitions, error) {
 	for i := range tiles.Tile {
 		tiles.Tile[i].Id = i
 	}
+	log.Printf("%v", tiles.Tile)
 	def.Tiles = tiles.Tile
 
 	if _, err := toml.DecodeFile(dir+"entities.toml", &def.Entities); err != nil {

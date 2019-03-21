@@ -20,9 +20,14 @@ func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
 	switch editType {
 	case "tile":
 		log.Printf("EDIT TYPE: TILE")
-		idx, ok := params.getInt("idx")
-		if !ok || idx < 0 || idx >= len(zone.Map) {
-			log.Printf("EDIT FAILED: INVALID INDEX")
+		x, ok := params.getInt("x")
+		if !ok {
+			log.Printf("EDIT FAILED: INVALID X")
+			return
+		}
+		y, ok := params.getInt("y")
+		if !ok {
+			log.Printf("EDIT FAILED: INVALID Y")
 			return
 		}
 		to, ok := params.getInt("to")
@@ -30,7 +35,8 @@ func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
 			log.Printf("EDIT FAILED: INVALID TILE ID")
 			return
 		}
-		zone.Map[idx] = to
+		tile := g.Defs.Tiles[to]
+		zone.Map.SetTile(x, y, tile)
 		zone.BuildCollisionMap()
 		updated = true
 	case "entity_create":
@@ -41,12 +47,12 @@ func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
 			return
 		}
 		x, ok := params.getInt("x")
-		if !ok || x < 0 || x >= zone.Width {
+		if !ok {
 			log.Printf("EDIT FAILED: INVALID X")
 			return
 		}
 		y, ok := params.getInt("y")
-		if !ok || y < 0 || y >= zone.Height {
+		if !ok {
 			log.Printf("EDIT FAILED: INVALID Y")
 			return
 		}
@@ -70,12 +76,12 @@ func (g *RPG) HandleEdit(zone *Zone, params ActionParams) {
 			return
 		}
 		x, ok := params.getInt("x")
-		if !ok || x < 0 || x >= zone.Width {
+		if !ok {
 			log.Printf("EDIT FAILED: INVALID X")
 			return
 		}
 		y, ok := params.getInt("y")
-		if !ok || y < 0 || y >= zone.Height {
+		if !ok {
 			log.Printf("EDIT FAILED: INVALID Y")
 			return
 		}

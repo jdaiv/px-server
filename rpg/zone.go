@@ -2,43 +2,44 @@ package rpg
 
 import (
 	"errors"
+	"fmt"
 	"log"
 )
 
 type Zone struct {
-	Id           int             `json:"-"`
-	Parent       *RPG            `json:"-"`
-	Name         string          `json:"name"`
-	SpawnPoint   Position        `json:"-"`
-	Width        int             `json:"width"`
-	Height       int             `json:"height"`
-	Map          []int           `json:"map"`
-	CollisionMap []bool          `json:"-"`
-	EntityCount  int             `json:"entCount"`
-	NPCCount     int             `json:"npcCount"`
-	Entities     map[int]*Entity `json:"entities"`
-	NPCs         map[int]*NPC    `json:"npcs"`
-	Players      map[int]*Player `json:"-"`
-	Items        map[int]bool    `json:"-"`
+	Id          int             `json:"-"`
+	Parent      *RPG            `json:"-"`
+	Name        string          `json:"name"`
+	SpawnPoint  Position        `json:"-"`
+	Map         *ZoneMap        `json:"map"`
+	EntityCount int             `json:"entCount"`
+	NPCCount    int             `json:"npcCount"`
+	Entities    map[int]*Entity `json:"entities"`
+	NPCs        map[int]*NPC    `json:"npcs"`
+	Players     map[int]*Player `json:"-"`
+	Items       map[int]bool    `json:"-"`
 
 	CombatInfo  *ZoneCombatData `json:"-"`
 	DisplayData ZoneDisplayData `json:"-"`
 }
 
 type ZoneDisplayData struct {
-	Name       string         `json:"name"`
-	Width      int            `json:"width"`
-	Height     int            `json:"height"`
-	Map        []TileDef      `json:"map"`
-	Entities   []EntityInfo   `json:"entities"`
-	Players    []PlayerInfo   `json:"players"`
-	NPCs       []NPCInfo      `json:"npcs"`
-	Items      []ItemInfo     `json:"items"`
-	CombatInfo ZoneCombatData `json:"combatInfo"`
+	Name       string          `json:"name"`
+	Width      int             `json:"width"`
+	Height     int             `json:"height"`
+	Map        map[string]tile `json:"map"`
+	Entities   []EntityInfo    `json:"entities"`
+	Players    []PlayerInfo    `json:"players"`
+	NPCs       []NPCInfo       `json:"npcs"`
+	Items      []ItemInfo      `json:"items"`
+	CombatInfo ZoneCombatData  `json:"combatInfo"`
 }
 
 func (z *Zone) Init(rpg *RPG) {
 	z.Parent = rpg
+	if z.Map == nil {
+		z.Map = NewZoneMap(10, 10, rpg.Defs.Tiles[2])
+	}
 	rpg.Items.LoadIntoZone(z)
 	z.Players = make(map[int]*Player)
 	if z.Entities == nil {
@@ -106,10 +107,6 @@ func (z *Zone) Tick() {
 }
 
 func (z *Zone) BuildCollisionMap() {
-	z.CollisionMap = make([]bool, z.Width*z.Height)
-	for i, t := range z.Map {
-		z.CollisionMap[i] = z.Parent.Defs.Tiles[t].Blocking
-	}
 	for _, e := range z.Entities {
 		if e.RootDef.Blocking {
 			size := e.RootDef.Size
@@ -117,26 +114,21 @@ func (z *Zone) BuildCollisionMap() {
 				for y := 0; y < size[1]; y++ {
 					_x := e.X + x
 					_y := e.Y + y
-					idx := _x + _y*z.Width
-					if idx > 0 && idx <= len(z.CollisionMap) {
-						z.CollisionMap[idx] = true
-					}
+					z.Map.SetBlocking(_x, _y, true)
 				}
 			}
 		}
 	}
 	for _, e := range z.NPCs {
-		idx := e.X + e.Y*z.Width
-		if idx > 0 && idx <= len(z.CollisionMap) {
-			z.CollisionMap[idx] = true
-		}
+		z.Map.SetBlocking(e.X, e.Y, true)
 	}
 }
 
 func (z *Zone) BuildDisplayData() {
-	tiles := make([]TileDef, len(z.Map))
-	for i, t := range z.Map {
-		tiles[i] = z.Parent.Defs.Tiles[t]
+	tiles := make(map[string]tile)
+	for i, t := range z.Map.Tiles {
+		x, y := uncompactCoords(i)
+		tiles[fmt.Sprintf("%d,%d", x, y)] = t
 	}
 	entities := make([]EntityInfo, len(z.Entities))
 	idx := 0
@@ -166,8 +158,6 @@ func (z *Zone) BuildDisplayData() {
 	}
 	z.DisplayData = ZoneDisplayData{
 		Name:       z.Name,
-		Width:      z.Width,
-		Height:     z.Height,
 		Map:        tiles,
 		Entities:   entities,
 		Players:    players,
@@ -200,7 +190,7 @@ func (z *Zone) RemoveEntity(entId int) {
 }
 
 func (z *Zone) AddNPC(npcType string, x, y int, updateCollisions bool) {
-	if z.CollisionMap[x+y*z.Width] {
+	if z.Map.IsBlocking(x, y) {
 		log.Printf("[rpg/zone/%s/createnpc] can't create npc '%s': coords %d,%d blocked", z.Name, npcType, x, y)
 		return
 	}
@@ -340,20 +330,7 @@ func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
 		_x -= 1
 	}
 
-	if _x < 0 {
-		_x = 0
-	}
-	if _x >= z.Width {
-		_x = z.Width - 1
-	}
-	if _y < 0 {
-		_y = 0
-	}
-	if _y >= z.Height {
-		_y = z.Height - 1
-	}
-
-	if z.CollisionMap[_x+_y*z.Width] {
+	if z.Map.IsBlocking(_x, _y) {
 		_x = x
 		_y = y
 	}
