@@ -36,7 +36,11 @@ type IncomingMessageData struct {
 type DisplayData struct {
 	Zone   ZoneDisplayData `json:"zone"`
 	Player PlayerInfo      `json:"player"`
-	Defs   *Definitions    `json:"defs"`
+
+	// EDITOR VALUES
+	Defs      *Definitions   `json:"defs,omitempty"`
+	DebugZone *Zone          `json:"debugZone,omitempty"`
+	AllZones  map[int]string `json:"allZones,omitempty"`
 }
 
 func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
@@ -157,11 +161,22 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 		return DisplayData{}
 	}
 
-	return DisplayData{
+	d := DisplayData{
 		Player: p.GetInfo(g),
 		Zone:   zone.DisplayData,
-		Defs:   g.Defs,
 	}
+
+	if p.Editing {
+		d.Defs = g.Defs
+		d.DebugZone = zone
+		allZones := make(map[int]string)
+		for id, z := range g.Zones.AllZones {
+			allZones[id] = z.Name
+		}
+		d.AllZones = allZones
+	}
+
+	return d
 }
 
 func (g *RPG) Tick() {

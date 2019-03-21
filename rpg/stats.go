@@ -5,13 +5,13 @@ import (
 )
 
 type StatBlock struct {
-	AttackPhys     int `json:"attack_phys,omitempty"`
-	AttackMagic    int `json:"attack_magic,omitempty"`
-	DefensePhys    int `json:"defense_phys,omitempty"`
-	DefenseMagic   int `json:"defense_magic,omitempty"`
-	CriticalChance int `json:"critical_chance,omitempty"`
-	Speed          int `json:"speed,omitempty"`
-	Dodge          int `json:"dodge,omitempty"`
+	AttackPhys     int `json:"attack_phys"`
+	AttackMagic    int `json:"attack_magic"`
+	DefensePhys    int `json:"defense_phys"`
+	DefenseMagic   int `json:"defense_magic"`
+	CriticalChance int `json:"critical_chance"`
+	Speed          int `json:"speed"`
+	Dodge          int `json:"dodge"`
 }
 
 type SpecialBlock struct {

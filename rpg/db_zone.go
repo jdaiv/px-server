@@ -70,6 +70,20 @@ func NewZoneDB(db *sql.DB) *ZoneDB {
 	return &zoneDB
 }
 
+func (db *ZoneDB) Insert(zone *Zone) bool {
+	db.log.Printf("Creating new zone")
+
+	err := db.DB.QueryRow(`INSERT INTO zones (data) VALUES ($1) RETURNING id`, zone).Scan(&zone.Id)
+	if err != nil {
+		log.Printf("Failed to create new zone, SQL error: %v", err)
+		return false
+	}
+
+	db.AllZones[zone.Id] = zone
+
+	return true
+}
+
 func (db *ZoneDB) Get(id int) (*Zone, bool) {
 	zone, ok := db.AllZones[id]
 	return zone, ok

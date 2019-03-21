@@ -14,22 +14,58 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	if !player.Editing {
-		if editType == "enable" {
-			player.Editing = true
-			log.Printf("%s ENABLED", player.Name)
-		}
+	if !player.Editing && editType != "enable" {
 		return
 	}
 
-	log.Printf("EDIT DATA: %v", params)
-
 	updated := false
+
+	log.Printf("EDIT DATA: %v", params)
 	switch editType {
+	case "enable":
+		player.Editing = true
+		log.Printf("%s ENABLED", player.Name)
 	case "disable":
 		player.Editing = false
 		log.Printf("%s DISABLED", player.Name)
 		return
+	case "zone_create":
+		log.Printf("EDIT TYPE: CREATE ZONE")
+		newZone := &Zone{Name: "unnamed"}
+		newZone.Init(g)
+		ok := g.Zones.Insert(newZone)
+		if !ok {
+			log.Printf("EDIT FAILED: CAN'T CREATE ZONE")
+			return
+		}
+		zone.RemovePlayer(player)
+		newZone.AddPlayer(player, -1, -1)
+		g.Zones.SetDirty(newZone.Id)
+		g.Outgoing <- OutgoingMessage{
+			Zone: newZone.Id,
+			Type: ACTION_UPDATE,
+		}
+		updated = true
+	case "zone_goto":
+		log.Printf("EDIT TYPE: GOTO ZONE")
+		to, ok := params.getInt("zone")
+		if !ok {
+			log.Printf("EDIT FAILED: INVALID ZONE ID")
+			return
+		}
+		newZone, ok := g.Zones.Get(to)
+		if !ok {
+			log.Printf("EDIT FAILED: INVALID ZONE")
+			return
+		}
+		zone.RemovePlayer(player)
+		newZone.AddPlayer(player, -1, -1)
+		g.Zones.SetDirty(newZone.Id)
+		g.Outgoing <- OutgoingMessage{
+			Zone: newZone.Id,
+			Type: ACTION_UPDATE,
+		}
+		updated = true
 	case "tile":
 		log.Printf("EDIT TYPE: TILE")
 		x, ok := params.getInt("x")

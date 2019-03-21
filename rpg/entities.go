@@ -29,13 +29,13 @@ type Entity struct {
 
 type EntityFields map[string]interface{}
 
-func (ef EntityFields) GetInt(name string) (int, bool) {
+func (ef EntityFields) GetNumber(name string) (float64, bool) {
 	f, ok := ef[name]
 	if !ok {
 		return 0, false
 	}
 
-	v, ok := f.(int)
+	v, ok := f.(float64)
 	return v, ok
 }
 
@@ -90,43 +90,43 @@ func UseSign(zone *Zone, ent *Entity, player *Player) (bool, error) {
 }
 
 func UseDoor(zone *Zone, ent *Entity, player *Player) (bool, error) {
-	targetZone, ok := ent.Fields.GetInt("target_zone")
+	targetZone, ok := ent.Fields.GetNumber("target_zone")
 	if !ok {
 		return false, errors.New("target zone not found")
 	}
-	targetX, ok := ent.Fields.GetInt("x")
+	targetX, ok := ent.Fields.GetNumber("x")
 	if !ok {
 		targetX = -1
 	}
-	targetY, ok := ent.Fields.GetInt("y")
+	targetY, ok := ent.Fields.GetNumber("y")
 	if !ok {
 		targetY = -1
 	}
 	root := zone.Parent
-	newZone, ok := root.Zones.Get(targetZone)
+	newZone, ok := root.Zones.Get(int(targetZone))
 	if !ok {
 		return false, errors.New("target zone doesn't exist")
 	}
 	zone.RemovePlayer(player)
-	newZone.AddPlayer(player, targetX, targetY)
+	newZone.AddPlayer(player, int(targetX), int(targetY))
 	return true, nil
 }
 
 func SpawnItem(zone *Zone, ent *Entity, player *Player) (bool, error) {
-	itemType, ok := ent.Fields.GetString("item_id")
+	itemType, ok := ent.Fields.GetString("item")
 	if !ok {
 		return false, errors.New("target item not found")
 	}
-	x, ok := ent.Fields.GetInt("x")
+	x, ok := ent.Fields.GetNumber("x")
 	if !ok {
 		return false, errors.New("x not found")
 	}
-	y, ok := ent.Fields.GetInt("y")
+	y, ok := ent.Fields.GetNumber("y")
 	if !ok {
 		return false, errors.New("y not found")
 	}
 
-	zone.AddItem(itemType, x, y)
+	zone.AddItem(itemType, int(x), int(y))
 
 	return true, nil
 }
@@ -166,16 +166,16 @@ func SpawnNPC(zone *Zone, ent *Entity, player *Player) (bool, error) {
 	if !ok {
 		return false, errors.New("target npc not found")
 	}
-	x, ok := ent.Fields.GetInt("x")
+	x, ok := ent.Fields.GetNumber("x")
 	if !ok {
 		return false, errors.New("x not found")
 	}
-	y, ok := ent.Fields.GetInt("y")
+	y, ok := ent.Fields.GetNumber("y")
 	if !ok {
 		return false, errors.New("y not found")
 	}
 
-	zone.AddNPC(npcType, x, y, true)
+	zone.AddNPC(npcType, int(x), int(y), true)
 
 	return true, nil
 }

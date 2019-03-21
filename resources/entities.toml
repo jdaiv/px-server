@@ -36,7 +36,7 @@ UseText = 'activate'
 Blocking = true
 UseFunc = 'spawn_item'
 [[item_spawner.fields]]
-Name = 'target_zone'
+Name = 'item'
 Type = 'item'
 [[item_spawner.fields]]
 Name = 'x'
