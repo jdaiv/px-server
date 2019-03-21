@@ -278,16 +278,15 @@ func (z *Zone) SendMessage(player *Player, text string) {
 	}
 }
 
-func (z *Zone) SendEffect(effectType string, x, y int) {
+type effectParams map[string]interface{}
+
+func (z *Zone) SendEffect(effectType string, params effectParams) {
+	params["type"] = effectType
 	z.Parent.Outgoing <- OutgoingMessage{
 		PlayerId: -1,
 		Zone:     z.Id,
 		Type:     ACTION_EFFECT,
-		Params: map[string]interface{}{
-			"type": effectType,
-			"x":    x,
-			"y":    y,
-		},
+		Params:   params,
 	}
 }
 

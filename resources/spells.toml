@@ -1,0 +1,13 @@
+
+[fireball]
+Name = 'fireball'
+Skill = 'magic_fire'
+Level = 0
+Cost = 1
+Effects = [
+    {Type = 'effect', Effect = 'fireball', Duration = 7, Origin = 'player', Target = 'target'},
+    {Type = 'aoe', Effect = 'fire', Duration = 1, Range = 2, Damage = 1, Target = 'enemies'},
+    {Type = 'aoe', Effect = 'fire', Duration = 1, Range = 2, Damage = 1, Target = 'enemies'},
+    {Type = 'aoe', Effect = 'fire', Duration = 1, Range = 2, Damage = 1, Target = 'enemies'},
+    # {Type = 'apply', Effect = 'fire', Duration = 0, Range = 2, Damage = 1},
+]

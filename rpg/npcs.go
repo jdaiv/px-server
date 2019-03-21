@@ -13,16 +13,15 @@ var dirMap = map[int]string{
 	3: "W",
 }
 
-var npcLogicFuncs = map[string]func(*NPC) bool{
+var npcLogicFuncs = map[string]func(*NPC, *Zone) bool{
 	"blob": BlobIdle,
 }
 
-var npcCombatLogicFuncs = map[string]func(*NPC) bool{
+var npcCombatLogicFuncs = map[string]func(*NPC, *Zone) bool{
 	"blob": BlobCombat,
 }
 
 type NPC struct {
-	Zone      *Zone `json:"-"`
 	Id        int
 	Name      string
 	Type      string
@@ -66,7 +65,6 @@ func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
 	stats := npcDef.Skills.BuildStats()
 
 	return &NPC{
-		Zone:      zone,
 		Id:        id,
 		Name:      npcDef.DefaultName,
 		Type:      npcType,
@@ -82,29 +80,35 @@ func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
 	}, nil
 }
 
-func (n *NPC) CombatTick() {
+func (n *NPC) CombatTick(zone *Zone) {
 	fn, ok := npcCombatLogicFuncs[n.Logic]
 	if !ok {
 		log.Printf("entity '%s' combat logic missing", n.Type)
 		return
 	}
-	fn(n)
+	fn(n, zone)
 }
 
-func BlobIdle(self *NPC) bool {
+func BlobIdle(self *NPC, zone *Zone) bool {
 	return false
 }
 
-func BlobCombat(self *NPC) bool {
-	for _, p := range self.Zone.Players {
+func BlobCombat(self *NPC, zone *Zone) bool {
+	for _, p := range zone.Players {
 		if intAbs(int64(self.X-p.X)) <= 1 && intAbs(int64(self.Y-p.Y)) <= 1 {
-			self.Zone.DoAttack(self, p)
-			self.Zone.SendEffect("wood_ex", p.X, p.Y)
-			self.Zone.SendEffect("screen_shake", 8, 8)
+			zone.DoMeleeAttack(self, p)
+			zone.SendEffect("wood_ex", effectParams{
+				"x": p.X,
+				"y": p.Y,
+			})
+			zone.SendEffect("screen_shake", effectParams{
+				"x": 8,
+				"y": 8,
+			})
 			return true
 		}
 	}
-	x, y, ok := self.Zone.Move(self.X, self.Y, dirMap[rand.Intn(4)])
+	x, y, ok := zone.Move(self.X, self.Y, dirMap[rand.Intn(4)])
 	self.X = x
 	self.Y = y
 	return ok

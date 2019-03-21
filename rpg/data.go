@@ -15,6 +15,7 @@ type Definitions struct {
 	Items    map[string]ItemDef
 	ItemMods map[string]ItemModDef
 	Skills   map[string]SkillDef
+	Spells   map[string]SpellDef
 }
 
 type TileDef struct {
@@ -71,6 +72,24 @@ type SkillDef struct {
 	Name string
 }
 
+type SpellDef struct {
+	Name    string
+	Skill   string
+	Level   int
+	Cost    int
+	Effects []SpellEffectDef
+}
+
+type SpellEffectDef struct {
+	Type     string
+	Effect   string
+	Duration int
+	Origin   string
+	Target   string
+	Range    int
+	Damage   int
+}
+
 func LoadDefinitions(dir string) (*Definitions, error) {
 	def := Definitions{}
 
@@ -107,6 +126,11 @@ func LoadDefinitions(dir string) (*Definitions, error) {
 
 	if _, err := toml.DecodeFile(dir+"skills.toml", &def.Skills); err != nil {
 		log.Printf("[rpg/definitions] error loading skill definitions: %v", err)
+		return nil, err
+	}
+
+	if _, err := toml.DecodeFile(dir+"spells.toml", &def.Spells); err != nil {
+		log.Printf("[rpg/definitions] error loading spell definitions: %v", err)
 		return nil, err
 	}
 

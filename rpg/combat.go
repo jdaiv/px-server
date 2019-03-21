@@ -9,12 +9,13 @@ import (
 const MAX_PLAYER_TURN_TIME = 120
 
 type ZoneCombatData struct {
-	InCombat   bool          `json:"inCombat"`
-	Waiting    bool          `json:"waiting"`
-	Delay      int           `json:"delay"`
-	Turn       int           `json:"turn"`
-	Current    int           `json:"current"`
-	Combatants []*CombatInfo `json:"combatants"`
+	InCombat   bool             `json:"inCombat"`
+	Waiting    bool             `json:"waiting"`
+	Delay      int              `json:"delay"`
+	Turn       int              `json:"turn"`
+	Current    int              `json:"current"`
+	SpellData  *CombatSpellData `json:"-"`
+	Combatants []*CombatInfo    `json:"combatants"`
 }
 
 type CombatInfo struct {
@@ -60,6 +61,7 @@ func (z *Zone) CheckCombat() bool {
 }
 
 func (z *Zone) StartCombat() {
+	z.CombatInfo.SpellData = &CombatSpellData{}
 	z.CombatInfo.Current = 0
 	z.CombatInfo.Turn = 1
 	z.CombatInfo.Combatants = nil
@@ -197,6 +199,11 @@ func (z *Zone) CombatTick() bool {
 
 	z.Parent.Zones.SetDirty(z.Id)
 
+	spellRunning := ci.SpellData.Tick(z)
+	if spellRunning {
+		return true
+	}
+
 	if ci.Waiting {
 		if ci.Delay > 0 {
 			ci.Delay -= 1
@@ -233,8 +240,16 @@ func (z *Zone) PostCombatAction() {
 	ci := z.CombatInfo
 	current := ci.Combatants[ci.Current]
 
-	current.Actor.Tick(current)
-	for _, c := range ci.Combatants {
+	z.CheckAlive()
+	z.CheckCombat()
+
+	if current.Actor.IsTurnOver(current) {
+		z.NextCombatant()
+	}
+}
+
+func (z *Zone) CheckAlive() {
+	for _, c := range z.CombatInfo.Combatants {
 		if c.IsPlayer {
 			p := c.Actor.(*Player)
 			if p.HP <= 0 {
@@ -247,13 +262,9 @@ func (z *Zone) PostCombatAction() {
 			}
 		}
 	}
-
-	if current.Actor.IsTurnOver(current) {
-		z.NextCombatant()
-	}
 }
 
-func (z *Zone) DoAttack(origin Combatant, target Combatant) {
+func (z *Zone) DoMeleeAttack(origin Combatant, target Combatant) {
 	dmg := origin.Attack()
 	target.Damage(dmg)
 	var msg string
@@ -266,13 +277,20 @@ func (z *Zone) DoAttack(origin Combatant, target Combatant) {
 		origin.GetName(), target.GetName(), dmg.Amount))
 }
 
+func (z *Zone) DoSpellAttack(origin *Player, spell SpellDef, x, y int) {
+	delay := z.CombatInfo.SpellData.RunSpell(z, spell, origin.X, origin.Y, x, y)
+	if delay {
+		z.CombatInfo.Waiting = true
+	}
+}
+
 type Combatant interface {
 	GetName() string
 	InitCombat() CombatInfo
 	Attack() DamageInfo
 	Damage(DamageInfo)
 	NewTurn(ci *CombatInfo)
-	Tick(ci *CombatInfo)
+	Tick(z *Zone, ci *CombatInfo)
 	IsTurnOver(ci *CombatInfo) bool
 }
 
@@ -301,8 +319,8 @@ func (n *NPC) NewTurn(ci *CombatInfo) {
 
 }
 
-func (n *NPC) Tick(ci *CombatInfo) {
-	n.CombatTick()
+func (n *NPC) Tick(z *Zone, ci *CombatInfo) {
+	n.CombatTick(z)
 }
 
 func (n *NPC) IsTurnOver(ci *CombatInfo) bool {
@@ -335,7 +353,7 @@ func (p *Player) NewTurn(ci *CombatInfo) {
 	ci.Timer = MAX_PLAYER_TURN_TIME
 }
 
-func (p *Player) Tick(ci *CombatInfo) {
+func (p *Player) Tick(z *Zone, ci *CombatInfo) {
 	ci.Timer -= 1
 }
 
