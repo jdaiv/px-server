@@ -162,7 +162,7 @@ func ModifyItem(zone *Zone, ent *Entity, player *Player) (bool, error) {
 }
 
 func SpawnNPC(zone *Zone, ent *Entity, player *Player) (bool, error) {
-	npcType, ok := ent.Fields.GetString("npc_id")
+	npcType, ok := ent.Fields.GetString("npc")
 	if !ok {
 		return false, errors.New("target npc not found")
 	}
