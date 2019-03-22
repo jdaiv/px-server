@@ -110,3 +110,14 @@ func (p *Player) DropItem(zone *Zone, itemId int) bool {
 	zone.AddExistingItem(itemId, p.X, p.Y)
 	return true
 }
+
+func (p *Player) GetSpells(defs *Definitions) map[string]SpellDef {
+	spells := make(map[string]SpellDef)
+	for n, s := range defs.Spells {
+		req := p.Skills.GetSkillLevel(s.Skill)
+		if req >= s.Level {
+			spells[n] = s
+		}
+	}
+	return spells
+}

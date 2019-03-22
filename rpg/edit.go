@@ -25,9 +25,11 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 	case "enable":
 		player.Editing = true
 		log.Printf("%s ENABLED", player.Name)
+		updated = true
 	case "disable":
 		player.Editing = false
 		log.Printf("%s DISABLED", player.Name)
+		updated = true
 		return
 	case "zone_create":
 		log.Printf("EDIT TYPE: CREATE ZONE")
@@ -39,7 +41,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			return
 		}
 		zone.RemovePlayer(player)
-		newZone.AddPlayer(player, -1, -1)
+		newZone.AddPlayer(player, 0, 0)
 		g.Zones.SetDirty(newZone.Id)
 		g.Outgoing <- OutgoingMessage{
 			Zone: newZone.Id,

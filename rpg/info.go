@@ -1,10 +1,11 @@
 package rpg
 
 type PlayerInfo struct {
-	Id        int                 `json:"id"`
-	Name      string              `json:"name"`
-	Slots     map[string]ItemInfo `json:"slots"`
-	Inventory map[int]ItemInfo    `json:"inventory,omitempty"`
+	Id        int                  `json:"id"`
+	Name      string               `json:"name"`
+	Slots     map[string]ItemInfo  `json:"slots"`
+	Inventory map[int]ItemInfo     `json:"inventory,omitempty"`
+	Spells    map[string]SpellInfo `json:"spells,omitempty"`
 
 	X int `json:"x"`
 	Y int `json:"y"`
@@ -26,11 +27,17 @@ func (p Player) GetInfo(base *RPG) PlayerInfo {
 		}
 	}
 
+	spells := make(map[string]SpellInfo)
+	for id, s := range p.GetSpells(base.Defs) {
+		spells[id] = s.GetInfo()
+	}
+
 	return PlayerInfo{
 		Id:        p.Id,
 		Name:      p.Name,
 		Slots:     p.GetSlotInfo(base),
 		Inventory: inv,
+		Spells:    spells,
 		X:         p.X,
 		Y:         p.Y,
 		HP:        p.HP,
@@ -155,5 +162,21 @@ func (n NPC) GetInfo() NPCInfo {
 		HP:        n.HP,
 		MaxHP:     n.MaxHP,
 		Alignment: n.Alignment,
+	}
+}
+
+type SpellInfo struct {
+	Name  string `json:"name"`
+	Skill string `json:"skill"`
+	Level int    `json:"level"`
+	Cost  int    `json:"cost"`
+}
+
+func (s SpellDef) GetInfo() SpellInfo {
+	return SpellInfo{
+		Name:  s.Name,
+		Skill: s.Skill,
+		Level: s.Level,
+		Cost:  s.Cost,
 	}
 }

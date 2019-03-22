@@ -85,6 +85,28 @@ func (s SkillBlock) TotalLevel() int {
 		s.MagicStone.Level
 }
 
+func (s SkillBlock) GetSkillLevel(name string) int {
+	switch name {
+	case "attack_melee":
+		return s.AttackMelee.Level
+	case "attack_ranged":
+		return s.AttackRanged.Level
+	case "defense_phys":
+		return s.DefensePhys.Level
+	case "defense_magic":
+		return s.DefenseMagic.Level
+	case "dodge":
+		return s.Dodge.Level
+	case "magic_fire":
+		return s.MagicFire.Level
+	case "magic_ice":
+		return s.MagicIce.Level
+	case "magic_stone":
+		return s.MagicStone.Level
+	}
+	return 0
+}
+
 func (s StatBlock) RollPhysDamage() DamageInfo {
 	crit := rand.Intn(100) <= s.CriticalChance
 	variance := (s.AttackPhys / 4)

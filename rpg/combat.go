@@ -240,6 +240,7 @@ func (z *Zone) PostCombatAction() {
 	ci := z.CombatInfo
 	current := ci.Combatants[ci.Current]
 
+	current.Actor.Tick(z, current)
 	z.CheckAlive()
 	z.CheckCombat()
 
