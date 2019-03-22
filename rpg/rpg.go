@@ -255,6 +255,10 @@ func (g *RPG) KillPlayer(p *Player) {
 			ent.Fields["type"] = "player"
 		}
 		g.Zones.SetDirty(p.CurrentZone)
+		zone.SendEffect("wood_ex", effectParams{
+			"x": p.X,
+			"y": p.Y,
+		})
 	}
 	g.PlayerReset(p)
 }
@@ -266,6 +270,10 @@ func (g *RPG) KillNPC(z *Zone, n *NPC) {
 		ent.Name = "corpse of " + n.Name
 		ent.Fields["type"] = n.Type
 	}
+	z.SendEffect("wood_ex", effectParams{
+		"x": n.X,
+		"y": n.Y,
+	})
 	g.Zones.SetDirty(z.Id)
 }
 

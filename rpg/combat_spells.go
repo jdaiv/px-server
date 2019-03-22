@@ -57,10 +57,6 @@ func (d *CombatSpellData) Tick(z *Zone) bool {
 						math.Pow(float64(n.Y-d.TargetY), 2))
 					if dist <= float64(effect.Range) {
 						n.Damage(DamageInfo{effect.Damage, false, "spell"})
-						z.SendEffect("wood_ex", effectParams{
-							"x": n.X,
-							"y": n.Y,
-						})
 					}
 				}
 				if effect.Effect != "" {
