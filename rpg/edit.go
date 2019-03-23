@@ -170,6 +170,20 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 		zone.RemoveEntity(entId)
 
 		updated = true
+	case "clear_corpses":
+		log.Printf("EDIT TYPE: CLEAR CORPSES")
+
+		toRemove := make(map[int]bool)
+		for id, e := range zone.Entities {
+			if e.Type == "corpse" {
+				toRemove[id] = true
+			}
+		}
+		for id := range toRemove {
+			zone.RemoveEntity(id)
+		}
+
+		updated = true
 	}
 
 	log.Printf("EDIT SUCCESS: %v", updated)

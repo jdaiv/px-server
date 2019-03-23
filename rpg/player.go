@@ -8,9 +8,10 @@ type Player struct {
 	Slots     map[string]int `json:"-"`
 	Inventory map[int]bool   `json:"-"`
 
-	CurrentZone int `json:"currentZone"`
-	X           int `json:"x"`
-	Y           int `json:"y"`
+	CurrentZone int    `json:"currentZone"`
+	X           int    `json:"x"`
+	Y           int    `json:"y"`
+	Facing      string `json:"facing"`
 
 	HP     int        `json:"hp"`
 	AP     int        `json:"ap"`
@@ -25,6 +26,10 @@ const (
 	BASE_AP_REGEN = 1
 	BASE_HP_REGEN = 8
 )
+
+func ValidFace(f string) bool {
+	return f == "N" || f == "S" || f == "E" || f == "W"
+}
 
 type Timers struct {
 	HP int

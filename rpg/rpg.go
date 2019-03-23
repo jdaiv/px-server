@@ -108,6 +108,8 @@ func (g *RPG) HandleMessages() {
 			switch incoming.Data.Type {
 			case ACTION_MOVE:
 				g.PlayerMove(p, zone, incoming.Data.Params)
+			case ACTION_FACE:
+				g.PlayerFace(p, zone, incoming.Data.Params)
 			case ACTION_USE:
 				g.PlayerUse(p, zone, incoming.Data.Params)
 			case ACTION_TAKE_ITEM:
@@ -206,6 +208,9 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 	p.Name = name
 	p.Rebuild(g)
 
+	if !ValidFace(p.Facing) {
+		p.Facing = "N"
+	}
 	if p.HP <= 0 {
 		p.HP = p.Stats.MaxHP()
 	}

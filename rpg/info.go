@@ -7,8 +7,9 @@ type PlayerInfo struct {
 	Inventory map[int]ItemInfo     `json:"inventory,omitempty"`
 	Spells    map[string]SpellInfo `json:"spells,omitempty"`
 
-	X int `json:"x"`
-	Y int `json:"y"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	Facing string `json:"facing"`
 
 	HP     int        `json:"hp"`
 	MaxHP  int        `json:"maxHP"`
@@ -40,6 +41,7 @@ func (p Player) GetInfo(base *RPG) PlayerInfo {
 		Spells:    spells,
 		X:         p.X,
 		Y:         p.Y,
+		Facing:    p.Facing,
 		HP:        p.HP,
 		AP:        p.AP,
 		MaxHP:     p.Stats.MaxHP(),
@@ -52,14 +54,15 @@ func (p Player) GetInfo(base *RPG) PlayerInfo {
 
 func (p Player) GetInfoPublic(base *RPG) PlayerInfo {
 	return PlayerInfo{
-		Id:    p.Id,
-		Name:  p.Name,
-		Slots: p.GetSlotInfo(base),
-		X:     p.X,
-		Y:     p.Y,
-		HP:    p.HP,
-		MaxHP: p.Stats.MaxHP(),
-		Level: p.Skills.TotalLevel(),
+		Id:     p.Id,
+		Name:   p.Name,
+		Slots:  p.GetSlotInfo(base),
+		X:      p.X,
+		Y:      p.Y,
+		Facing: p.Facing,
+		HP:     p.HP,
+		MaxHP:  p.Stats.MaxHP(),
+		Level:  p.Skills.TotalLevel(),
 	}
 }
 

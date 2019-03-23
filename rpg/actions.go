@@ -7,6 +7,7 @@ const (
 	ACTION_JOIN         = "join"
 	ACTION_LEAVE        = "leave"
 	ACTION_MOVE         = "move"
+	ACTION_FACE         = "face"
 	ACTION_USE          = "use"
 	ACTION_TAKE_ITEM    = "take_item"
 	ACTION_EQUIP_ITEM   = "equip_item"
@@ -27,6 +28,7 @@ var PlayerIncomingActions = map[string]bool{
 	ACTION_JOIN:         true,
 	ACTION_LEAVE:        true,
 	ACTION_MOVE:         true,
+	ACTION_FACE:         true,
 	ACTION_USE:          true,
 	ACTION_TAKE_ITEM:    true,
 	ACTION_EQUIP_ITEM:   true,

@@ -25,3 +25,12 @@ func (g *RPG) PlayerMove(p *Player, z *Zone, params ActionParams) {
 	p.Y = y
 	g.Zones.SetDirty(z.Id)
 }
+
+func (g *RPG) PlayerFace(p *Player, z *Zone, params ActionParams) {
+	direction, ok := params.getString("direction")
+	if !ok || !ValidFace(direction) {
+		return
+	}
+	p.Facing = direction
+	g.Zones.SetDirty(z.Id)
+}
