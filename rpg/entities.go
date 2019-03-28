@@ -18,13 +18,14 @@ var entityUseFuncs = map[string]func(*Zone, *Entity, *Player) (bool, error){
 }
 
 type Entity struct {
-	RootDef EntityDef    `json:"-"`
-	Id      int          `json:"id"`
-	Name    string       `json:"name"`
-	Type    string       `json:"type"`
-	X       int          `json:"x"`
-	Y       int          `json:"y"`
-	Fields  EntityFields `json:"fields"`
+	RootDef  EntityDef    `json:"-"`
+	Id       int          `json:"id"`
+	Name     string       `json:"name"`
+	Type     string       `json:"type"`
+	X        int          `json:"x"`
+	Y        int          `json:"y"`
+	Rotation int          `json:"rotation"`
+	Fields   EntityFields `json:"fields"`
 }
 
 type EntityFields map[string]interface{}

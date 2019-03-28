@@ -135,6 +135,11 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			log.Printf("EDIT FAILED: INVALID Y")
 			return
 		}
+		rotation, ok := params.getInt("rotation")
+		if !ok {
+			log.Printf("EDIT FAILED: INVALID ROTATION")
+			return
+		}
 
 		if len(name) > 0 {
 			ent.Name = name
@@ -143,6 +148,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 		}
 		ent.X = x
 		ent.Y = y
+		ent.Rotation = rotation
 		if ent.Fields == nil {
 			ent.Fields = make(EntityFields)
 		}
