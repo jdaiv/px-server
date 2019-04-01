@@ -6,7 +6,7 @@ import (
 )
 
 func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
-	log.Printf("START EDIT")
+	log.Printf("START EDIT IN %s", zone.Name)
 
 	editType, ok := params.getString("type")
 	if !ok {
@@ -34,14 +34,14 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 	case "zone_create":
 		log.Printf("EDIT TYPE: CREATE ZONE")
 		newZone := &Zone{Name: "unnamed"}
-		newZone.Init(g)
+		g.InitZone(newZone)
 		ok := g.Zones.Insert(newZone)
 		if !ok {
 			log.Printf("EDIT FAILED: CAN'T CREATE ZONE")
 			return
 		}
-		zone.RemovePlayer(player)
-		newZone.AddPlayer(player, 0, 0)
+		g.RemovePlayer(zone, player)
+		g.AddPlayer(newZone, player, 0, 0)
 		g.Zones.SetDirty(newZone.Id)
 		g.Outgoing <- OutgoingMessage{
 			Zone: newZone.Id,
@@ -60,8 +60,8 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			log.Printf("EDIT FAILED: INVALID ZONE")
 			return
 		}
-		zone.RemovePlayer(player)
-		newZone.AddPlayer(player, -1, -1)
+		g.RemovePlayer(zone, player)
+		g.AddPlayer(newZone, player, -1, -1)
 		g.Zones.SetDirty(newZone.Id)
 		g.Outgoing <- OutgoingMessage{
 			Zone: newZone.Id,
@@ -87,7 +87,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 		}
 		tile := g.Defs.Tiles[to]
 		zone.Map.SetTile(x, y, tile)
-		zone.BuildCollisionMap()
+		g.BuildCollisionMap(zone)
 		updated = true
 	case "entity_create":
 		log.Printf("EDIT TYPE: CREATE ENTITY")
@@ -106,8 +106,11 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			log.Printf("EDIT FAILED: INVALID Y")
 			return
 		}
-		zone.AddEntity(entType, x, y, true)
-		updated = true
+		if _, err := g.AddEntity(zone, entType, x, y, true); err != nil {
+			log.Printf("EDIT FAILED: %v", err)
+		} else {
+			updated = true
+		}
 	case "entity_edit":
 		log.Printf("EDIT TYPE: EDIT ENTITY")
 		entId, ok := params.getInt("ent")
@@ -158,7 +161,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 				ent.Fields[key] = v
 			}
 		}
-		zone.BuildCollisionMap()
+		g.BuildCollisionMap(zone)
 
 		updated = true
 	case "entity_delete":
@@ -173,7 +176,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			return
 		}
 
-		zone.RemoveEntity(entId)
+		g.RemoveEntity(zone, entId)
 
 		updated = true
 	case "clear_corpses":
@@ -186,7 +189,7 @@ func (g *RPG) HandleEdit(player *Player, zone *Zone, params ActionParams) {
 			}
 		}
 		for id := range toRemove {
-			zone.RemoveEntity(id)
+			g.RemoveEntity(zone, id)
 		}
 
 		updated = true

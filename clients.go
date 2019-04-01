@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/panicexpress/backend/rpg"
+	"github.com/jdaiv/px-server/rpg"
 
 	"github.com/gorilla/websocket"
 )

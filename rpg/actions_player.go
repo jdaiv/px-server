@@ -18,7 +18,7 @@ func (g *RPG) PlayerMove(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	if !z.CheckAPCost(p, 1) {
+	if !p.CheckAPCost(1) {
 		return
 	}
 	p.X = x

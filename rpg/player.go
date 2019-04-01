@@ -1,5 +1,7 @@
 package rpg
 
+import "math/rand"
+
 var playerSlots = []string{"head", "torso", "legs", "hands"}
 
 type Player struct {
@@ -36,18 +38,14 @@ type Timers struct {
 	AP int
 }
 
-func (p *Player) Rebuild(base *RPG) {
-	base.Items.LoadIntoPlayer(p)
-	p.BuildStats(base)
-}
-
-func (p *Player) BuildStats(base *RPG) {
+func (g *RPG) BuildPlayer(p *Player) {
+	g.Items.LoadIntoPlayer(p)
 	stats := p.Skills.BuildStats()
 	for _, itemId := range p.Slots {
 		if itemId < 0 {
 			continue
 		}
-		item, ok := base.Items.Get(itemId)
+		item, ok := g.Items.Get(itemId)
 		if !ok {
 			continue
 		}
@@ -56,13 +54,13 @@ func (p *Player) BuildStats(base *RPG) {
 	p.Stats = stats
 }
 
-func (p *Player) EquipItem(base *RPG, itemId int) bool {
+func (g *RPG) EquipItem(p *Player, itemId int) bool {
 	_, ok := p.Inventory[itemId]
 	if !ok {
 		return false
 	}
 
-	item, ok := base.Items.Get(itemId)
+	item, ok := g.Items.Get(itemId)
 	if !ok {
 		return false
 	}
@@ -82,47 +80,80 @@ func (p *Player) EquipItem(base *RPG, itemId int) bool {
 	}
 
 	if _, equipped := p.Slots[targetSlot]; equipped {
-		p.UnequipItem(base, targetSlot)
+		g.UnequipItem(p, targetSlot)
 	}
 
 	item.Equipped = targetSlot
-	base.Items.Save(item)
+	g.Items.Save(item)
 	return true
 }
 
-func (p *Player) UnequipItem(base *RPG, slot string) bool {
+func (g *RPG) UnequipItem(p *Player, slot string) bool {
 	id, ok := p.Slots[slot]
 	if !ok || id < 0 {
 		return false
 	}
 
-	item, ok := base.Items.Get(id)
+	item, ok := g.Items.Get(id)
 	if !ok {
 		return false
 	}
 
 	item.Equipped = ""
-	base.Items.Save(item)
+	g.Items.Save(item)
 	return true
 }
 
-func (p *Player) DropItem(zone *Zone, itemId int) bool {
+func (g *RPG) DropItem(zone *Zone, p *Player, itemId int) bool {
 	_, ok := p.Inventory[itemId]
 	if !ok {
 		return false
 	}
 
-	zone.AddExistingItem(itemId, p.X, p.Y)
+	g.AddExistingItem(zone, itemId, p.X, p.Y)
 	return true
 }
 
-func (p *Player) GetSpells(defs *Definitions) map[string]SpellDef {
+func (g *RPG) GetSpellsFor(p *Player) map[string]SpellDef {
 	spells := make(map[string]SpellDef)
-	for n, s := range defs.Spells {
+	for n, s := range g.Defs.Spells {
 		req := p.Skills.GetSkillLevel(s.Skill)
 		if req >= s.Level {
 			spells[n] = s
 		}
 	}
 	return spells
+}
+
+func (p *Player) GetName() string {
+	return p.Name
+}
+
+func (p *Player) InitCombat() CombatInfo {
+	return CombatInfo{
+		Initiative: rand.Intn(20),
+		IsPlayer:   true,
+		Id:         p.Id,
+	}
+}
+
+func (p *Player) Attack() DamageInfo {
+	return p.Stats.RollPhysDamage()
+}
+
+func (p *Player) Damage(dmg DamageInfo) {
+	p.HP -= dmg.Amount
+}
+
+func (p *Player) NewTurn(ci *CombatInfo) {
+	p.AP = p.Stats.MaxAP()
+	ci.Timer = MAX_PLAYER_TURN_TIME
+}
+
+func (p *Player) Tick(g *RPG, z *Zone, ci *CombatInfo) {
+	ci.Timer -= 1
+}
+
+func (p *Player) IsTurnOver(ci *CombatInfo) bool {
+	return ci.Timer <= 0 || p.AP <= 0
 }

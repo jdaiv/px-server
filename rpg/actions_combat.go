@@ -30,18 +30,18 @@ func (g *RPG) PlayerAttack(p *Player, z *Zone, params ActionParams) {
 
 		log.Printf("[rpg/zone/%s/attack] attacking %d", z.Name, npcId)
 
-		if !z.CheckAPCost(p, 1) {
+		if !p.CheckAPCost(1) {
 			return
 		}
 
-		z.DoMeleeAttack(p, npc)
+		g.DoMeleeAttack(z, p, npc)
 		p.Skills.AttackMelee.AddXP(5)
 
-		z.SendEffect("wood_ex", effectParams{
+		g.SendEffect(z, "wood_ex", effectParams{
 			"x": npc.X,
 			"y": npc.Y,
 		})
-		z.SendEffect("screen_shake", effectParams{
+		g.SendEffect(z, "screen_shake", effectParams{
 			"x": 8,
 			"y": 8,
 		})
@@ -66,9 +66,9 @@ func (g *RPG) PlayerAttack(p *Player, z *Zone, params ActionParams) {
 			log.Println("couldn't find spell")
 			return
 		}
-		if !z.CheckAPCost(p, spell.Cost) {
+		if !p.CheckAPCost(spell.Cost) {
 			return
 		}
-		z.DoSpellAttack(p, spell, x, y)
+		g.DoSpellAttack(z, p, spell, x, y)
 	}
 }

@@ -2,6 +2,7 @@ package rpg
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 )
@@ -13,11 +14,11 @@ var dirMap = map[int]string{
 	3: "W",
 }
 
-var npcLogicFuncs = map[string]func(*NPC, *Zone) bool{
+var npcLogicFuncs = map[string]func(*RPG, *NPC, *Zone) bool{
 	"blob": BlobIdle,
 }
 
-var npcCombatLogicFuncs = map[string]func(*NPC, *Zone) bool{
+var npcCombatLogicFuncs = map[string]func(*RPG, *NPC, *Zone) bool{
 	"blob": BlobCombat,
 }
 
@@ -42,8 +43,13 @@ type NPCItem struct {
 	Special SpecialBlock
 }
 
-func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
-	npcDef, ok := zone.Parent.Defs.NPCs[npcType]
+func (g *RPG) NewNPC(z *Zone, npcType string, x, y int) (*NPC, error) {
+	if z.Map.IsBlocking(x, y) {
+		return nil, fmt.Errorf("coords %d,%d blocked", x, y)
+	}
+
+	id := z.NPCCount
+	npcDef, ok := g.Defs.NPCs[npcType]
 	if !ok {
 		return nil, errors.New("npc missing")
 	}
@@ -53,7 +59,7 @@ func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
 		if itemName == "" {
 			continue
 		}
-		if itemDef, ok := zone.Parent.Defs.Items[itemName]; ok {
+		if itemDef, ok := g.Defs.Items[itemName]; ok {
 			items[slot] = NPCItem{
 				itemDef.Name,
 				itemDef.Stats,
@@ -64,7 +70,7 @@ func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
 
 	stats := npcDef.Skills.BuildStats()
 
-	return &NPC{
+	npc := &NPC{
 		Id:        id,
 		Name:      npcDef.DefaultName,
 		Type:      npcType,
@@ -77,31 +83,72 @@ func NewNPC(zone *Zone, id int, npcType string, x, y int) (*NPC, error) {
 		Skills:    npcDef.Skills,
 		Stats:     stats,
 		Slots:     items,
-	}, nil
+	}
+
+	z.NPCs[id] = npc
+	z.NPCCount += 1
+
+	g.BuildCollisionMap(z)
+
+	return npc, nil
 }
 
-func (n *NPC) CombatTick(zone *Zone) {
+func (g *RPG) RemoveNPC(z *Zone, npcId int) {
+	delete(z.NPCs, npcId)
+	g.BuildCollisionMap(z)
+	g.CheckCombat(z)
+}
+
+func (n *NPC) GetName() string {
+	return n.Name
+}
+
+func (n *NPC) InitCombat() CombatInfo {
+	return CombatInfo{
+		Initiative: rand.Intn(20),
+		IsPlayer:   false,
+		Id:         n.Id,
+	}
+}
+
+func (n *NPC) Attack() DamageInfo {
+	return n.Stats.RollPhysDamage()
+}
+
+func (n *NPC) Damage(dmg DamageInfo) {
+	n.HP -= dmg.Amount
+}
+
+func (n *NPC) NewTurn(ci *CombatInfo) {
+
+}
+
+func (n *NPC) Tick(g *RPG, z *Zone, ci *CombatInfo) {
 	fn, ok := npcCombatLogicFuncs[n.Logic]
 	if !ok {
 		log.Printf("entity '%s' combat logic missing", n.Type)
 		return
 	}
-	fn(n, zone)
+	fn(g, n, z)
 }
 
-func BlobIdle(self *NPC, zone *Zone) bool {
+func (n *NPC) IsTurnOver(ci *CombatInfo) bool {
+	return true
+}
+
+func BlobIdle(g *RPG, self *NPC, zone *Zone) bool {
 	return false
 }
 
-func BlobCombat(self *NPC, zone *Zone) bool {
+func BlobCombat(g *RPG, self *NPC, zone *Zone) bool {
 	for _, p := range zone.Players {
 		if intAbs(int64(self.X-p.X)) <= 1 && intAbs(int64(self.Y-p.Y)) <= 1 {
-			zone.DoMeleeAttack(self, p)
-			zone.SendEffect("wood_ex", effectParams{
+			g.DoMeleeAttack(zone, self, p)
+			g.SendEffect(zone, "wood_ex", effectParams{
 				"x": p.X,
 				"y": p.Y,
 			})
-			zone.SendEffect("screen_shake", effectParams{
+			g.SendEffect(zone, "screen_shake", effectParams{
 				"x": 8,
 				"y": 8,
 			})

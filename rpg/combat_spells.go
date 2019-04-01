@@ -15,7 +15,7 @@ type CombatSpellData struct {
 	TargetY      int      `json:"-"`
 }
 
-func (d *CombatSpellData) RunSpell(z *Zone, spell SpellDef, sX, sY, tX, tY int) bool {
+func (d *CombatSpellData) RunSpell(g *RPG, z *Zone, spell SpellDef, sX, sY, tX, tY int) bool {
 	if len(spell.Effects) <= 0 {
 		return false
 	}
@@ -27,10 +27,10 @@ func (d *CombatSpellData) RunSpell(z *Zone, spell SpellDef, sX, sY, tX, tY int) 
 	d.SourceY = sY
 	d.TargetX = tX
 	d.TargetY = tY
-	return d.Tick(z)
+	return d.Tick(g, z)
 }
 
-func (d *CombatSpellData) Tick(z *Zone) bool {
+func (d *CombatSpellData) Tick(g *RPG, z *Zone) bool {
 	if !d.SpellCasting {
 		return false
 	}
@@ -50,7 +50,7 @@ func (d *CombatSpellData) Tick(z *Zone) bool {
 					"targetX": d.TargetX,
 					"targetY": d.TargetY,
 				}
-				z.SendEffect(effect.Effect, eParams)
+				g.SendEffect(z, effect.Effect, eParams)
 			case "aoe":
 				for _, n := range z.NPCs {
 					dist := math.Sqrt(math.Pow(float64(n.X-d.TargetX), 2) +
@@ -65,7 +65,7 @@ func (d *CombatSpellData) Tick(z *Zone) bool {
 						for y := -r; y <= r; y += 1 {
 							dist := math.Sqrt(math.Pow(float64(x), 2) + math.Pow(float64(y), 2))
 							if dist <= r {
-								z.SendEffect(effect.Effect, effectParams{
+								g.SendEffect(z, effect.Effect, effectParams{
 									"x": d.TargetX + int(x),
 									"y": d.TargetY + int(y),
 								})

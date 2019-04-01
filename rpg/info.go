@@ -20,7 +20,7 @@ type PlayerInfo struct {
 	Skills SkillBlock `json:"skills,omitempty"`
 }
 
-func (p Player) GetInfo(base *RPG) PlayerInfo {
+func (p *Player) GetInfo(base *RPG) PlayerInfo {
 	inv := make(map[int]ItemInfo)
 	for id, _ := range p.Inventory {
 		if item, ok := base.Items.Get(id); ok {
@@ -29,7 +29,7 @@ func (p Player) GetInfo(base *RPG) PlayerInfo {
 	}
 
 	spells := make(map[string]SpellInfo)
-	for id, s := range p.GetSpells(base.Defs) {
+	for id, s := range base.GetSpellsFor(p) {
 		spells[id] = s.GetInfo()
 	}
 

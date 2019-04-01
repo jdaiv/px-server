@@ -1,14 +1,12 @@
 package rpg
 
 import (
-	"errors"
 	"fmt"
 	"log"
 )
 
 type Zone struct {
 	Id          int             `json:"-"`
-	Parent      *RPG            `json:"-"`
 	Name        string          `json:"name"`
 	SpawnPoint  Position        `json:"-"`
 	Map         *ZoneMap        `json:"map"`
@@ -24,30 +22,31 @@ type Zone struct {
 }
 
 type ZoneDisplayData struct {
-	Name       string           `json:"name"`
-	Width      int              `json:"width"`
-	Height     int              `json:"height"`
-	Map        map[string]*tile `json:"map"`
-	Entities   []EntityInfo     `json:"entities"`
-	Players    []PlayerInfo     `json:"players"`
-	NPCs       []NPCInfo        `json:"npcs"`
-	Items      []ItemInfo       `json:"items"`
-	CombatInfo ZoneCombatData   `json:"combatInfo"`
+	Name              string           `json:"name"`
+	Width             int              `json:"width"`
+	Height            int              `json:"height"`
+	Map               map[string]*tile `json:"map"`
+	Entities          []EntityInfo     `json:"entities"`
+	Players           []PlayerInfo     `json:"players"`
+	NPCs              []NPCInfo        `json:"npcs"`
+	Items             []ItemInfo       `json:"items"`
+	InCombat          bool             `json:"inCombat"`
+	CurrentInitiative int              `json:"currentInitiative"`
+	Combatants        []CombatInfo     `json:"combatants"`
 }
 
-func (z *Zone) Init(rpg *RPG) {
-	z.Parent = rpg
+func (g *RPG) InitZone(z *Zone) {
 	if z.Map == nil {
-		z.Map = NewZoneMap(10, 10, rpg.Defs.Tiles[2])
+		z.Map = NewZoneMap(10, 10, g.Defs.Tiles[2])
 	}
-	rpg.Items.LoadIntoZone(z)
+	g.Items.LoadIntoZone(z)
 	z.Players = make(map[int]*Player)
 	if z.Entities == nil {
 		z.Entities = make(map[int]*Entity)
 	} else {
 		invalidEnts := make([]int, 0)
 		for id, e := range z.Entities {
-			entityDef, ok := z.Parent.Defs.Entities[e.Type]
+			entityDef, ok := g.Defs.Entities[e.Type]
 			if !ok {
 				log.Printf("[rpg/zone/%s] can't create entity due to missing definition %v", z.Name, e)
 				invalidEnts = append(invalidEnts, id)
@@ -63,13 +62,13 @@ func (z *Zone) Init(rpg *RPG) {
 		z.NPCs = make(map[int]*NPC)
 	}
 	z.Items = make(map[int]bool)
-	z.BuildCollisionMap()
+	g.BuildCollisionMap(z)
 	z.CombatInfo = &ZoneCombatData{}
 }
 
-func (z *Zone) Tick() {
+func (g *RPG) ZoneTick(z *Zone) {
 	if z.CombatInfo.InCombat {
-		z.CombatTick()
+		g.CombatTick(z)
 	} else {
 		for _, p := range z.Players {
 			maxHP := p.Stats.MaxHP()
@@ -82,8 +81,8 @@ func (z *Zone) Tick() {
 						p.HP = maxHP
 					}
 					p.Timers.HP = BASE_HP_REGEN
-					z.Parent.Players.SetDirty(p.Id)
-					z.Parent.Zones.SetDirty(z.Id)
+					g.Players.SetDirty(p.Id)
+					g.Zones.SetDirty(z.Id)
 				}
 			} else {
 				p.Timers.HP -= 1
@@ -96,8 +95,8 @@ func (z *Zone) Tick() {
 						p.AP = maxAP
 					}
 					p.Timers.AP = BASE_AP_REGEN
-					z.Parent.Players.SetDirty(p.Id)
-					z.Parent.Zones.SetDirty(z.Id)
+					g.Players.SetDirty(p.Id)
+					g.Zones.SetDirty(z.Id)
 				}
 			} else {
 				p.Timers.AP -= 1
@@ -106,9 +105,9 @@ func (z *Zone) Tick() {
 	}
 }
 
-func (z *Zone) BuildCollisionMap() {
+func (g *RPG) BuildCollisionMap(z *Zone) {
 	for _, t := range z.Map.Tiles {
-		t.Blocking = z.Parent.Defs.Tiles[t.Tile].Blocking
+		t.Blocking = g.Defs.Tiles[t.Tile].Blocking
 		t.BlockingEnt = false
 	}
 	for _, e := range z.Entities {
@@ -128,7 +127,7 @@ func (z *Zone) BuildCollisionMap() {
 	}
 }
 
-func (z *Zone) BuildDisplayData() {
+func (g *RPG) BuildDisplayData(z *Zone) {
 	tiles := make(map[string]*tile)
 	for i, t := range z.Map.Tiles {
 		x, y := uncompactCoords(i)
@@ -143,13 +142,13 @@ func (z *Zone) BuildDisplayData() {
 	players := make([]PlayerInfo, len(z.Players))
 	idx = 0
 	for _, p := range z.Players {
-		players[idx] = p.GetInfo(z.Parent)
+		players[idx] = p.GetInfo(g)
 		idx++
 	}
 	items := make([]ItemInfo, len(z.Items))
 	idx = 0
 	for id, _ := range z.Items {
-		if item, ok := z.Parent.Items.Get(id); ok {
+		if item, ok := g.Items.Get(id); ok {
 			items[idx] = item.GetInfo()
 			idx++
 		}
@@ -160,115 +159,53 @@ func (z *Zone) BuildDisplayData() {
 		npcs[idx] = n.GetInfo()
 		idx++
 	}
+	combatants := make([]CombatInfo, 0)
+	if z.CombatInfo.InCombat {
+		for _, info := range z.CombatInfo.Combatants {
+			combatants = append(combatants, *info)
+		}
+	}
 	z.DisplayData = ZoneDisplayData{
-		Name:       z.Name,
-		Map:        tiles,
-		Entities:   entities,
-		Players:    players,
-		Items:      items,
-		NPCs:       npcs,
-		CombatInfo: *z.CombatInfo,
+		Name:              z.Name,
+		Map:               tiles,
+		Entities:          entities,
+		Players:           players,
+		Items:             items,
+		NPCs:              npcs,
+		InCombat:          z.CombatInfo.InCombat,
+		CurrentInitiative: z.CombatInfo.CurrentInitiative,
+		Combatants:        combatants,
 	}
 }
 
-func (z *Zone) AddEntity(entType string, x, y int, updateCollisions bool) (*Entity, error) {
+func (g *RPG) AddEntity(z *Zone, entType string, x, y int, updateCollisions bool) (*Entity, error) {
 	id := z.EntityCount
-	ent, err := NewEntity(z, id, entType, x, y)
+	ent, err := g.NewEntity(z, id, entType, x, y)
 	if err != nil {
-		log.Printf("[rpg/zone/%s/create] error creating entity '%s': %v", z.Name, entType, err)
+		log.Printf("[rpg/zone/%s/createent] error creating entity '%s': %v", z.Name, entType, err)
 		return nil, err
 	}
 	z.Entities[id] = ent
 	z.EntityCount += 1
 
 	if updateCollisions {
-		z.BuildCollisionMap()
+		g.BuildCollisionMap(z)
 	}
 
 	return ent, nil
 }
 
-func (z *Zone) RemoveEntity(entId int) {
+func (g *RPG) RemoveEntity(z *Zone, entId int) {
 	delete(z.Entities, entId)
-	z.BuildCollisionMap()
+	g.BuildCollisionMap(z)
 }
 
-func (z *Zone) AddNPC(npcType string, x, y int, updateCollisions bool) {
-	if z.Map.IsBlocking(x, y) {
-		log.Printf("[rpg/zone/%s/createnpc] can't create npc '%s': coords %d,%d blocked", z.Name, npcType, x, y)
-		return
-	}
-
-	id := z.NPCCount
-	npc, err := NewNPC(z, id, npcType, x, y)
-	if err != nil {
-		log.Printf("[rpg/zone/%s/createnpc] error creating npc '%s': %v", z.Name, npcType, err)
-		return
-	}
-	z.NPCs[id] = npc
-	z.NPCCount += 1
-
-	if updateCollisions {
-		z.BuildCollisionMap()
-	}
-
-	z.CheckCombat()
-}
-
-func (z *Zone) RemoveNPC(npcId int) {
-	delete(z.NPCs, npcId)
-	z.BuildCollisionMap()
-	z.CheckCombat()
-}
-
-func (z *Zone) AddItem(itemType string, x, y int) (Item, error) {
-	def, ok := z.Parent.Defs.Items[itemType]
-	if !ok {
-		log.Printf("[rpg/zone/%s/createitem] item doesn't exist '%s'", z.Name, itemType)
-		return Item{}, errors.New("item doesn't exist")
-	}
-
-	item, ok := z.Parent.Items.New(def)
-	if !ok {
-		log.Printf("[rpg/zone/%s/createitem] error creating item '%s'", z.Name, itemType)
-		return Item{}, nil
-	}
-
-	item.X = x
-	item.Y = y
-	item.CurrentZone = z.Id
-
-	z.Items[item.Id] = true
-	z.Parent.Items.Save(item)
-
-	return item, nil
-}
-
-func (z *Zone) AddExistingItem(itemId int, x, y int) {
-	item, ok := z.Parent.Items.Get(itemId)
-	if !ok {
-		log.Printf("[rpg/zone/%s/additem] item %d doesn't exist", z.Name, itemId)
-		return
-	}
-	item.Held = false
-	item.X = x
-	item.Y = y
-	item.CurrentZone = z.Id
-	z.Items[item.Id] = true
-	z.Parent.Items.Save(item)
-}
-
-func (z *Zone) RemoveItem(item *Item) {
-	item.CurrentZone = -1
-	delete(z.Items, item.Id)
-}
-
-func (z *Zone) SendMessage(player *Player, text string) {
+func (g *RPG) SendMessage(z *Zone, player *Player, text string) {
 	playerId := -1
 	if player != nil {
 		playerId = player.Id
 	}
-	z.Parent.Outgoing <- OutgoingMessage{
+	g.Outgoing <- OutgoingMessage{
 		PlayerId: playerId,
 		Zone:     z.Id,
 		Type:     ACTION_CHAT,
@@ -280,9 +217,9 @@ func (z *Zone) SendMessage(player *Player, text string) {
 
 type effectParams map[string]interface{}
 
-func (z *Zone) SendEffect(effectType string, params effectParams) {
+func (g *RPG) SendEffect(z *Zone, effectType string, params effectParams) {
 	params["type"] = effectType
-	z.Parent.Outgoing <- OutgoingMessage{
+	g.Outgoing <- OutgoingMessage{
 		PlayerId: -1,
 		Zone:     z.Id,
 		Type:     ACTION_EFFECT,
@@ -290,23 +227,23 @@ func (z *Zone) SendEffect(effectType string, params effectParams) {
 	}
 }
 
-func (z *Zone) AddPlayer(player *Player, x, y int) {
+func (g *RPG) AddPlayer(z *Zone, player *Player, x, y int) {
 	player.CurrentZone = z.Id
 
 	player.X = x
 	player.Y = y
 
 	z.Players[player.Id] = player
-	z.CheckCombat()
+	g.CheckCombat(z)
 }
 
-func (z *Zone) RemovePlayer(player *Player) {
+func (g *RPG) RemovePlayer(z *Zone, player *Player) {
 	if player.CurrentZone != z.Id {
 		return
 	}
 
 	delete(z.Players, player.Id)
-	z.CheckCombat()
+	g.CheckCombat(z)
 }
 
 func (z *Zone) Move(x, y int, direction string) (int, int, bool) {

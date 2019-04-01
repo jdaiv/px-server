@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/panicexpress/backend/rpg"
+	"github.com/jdaiv/px-server/rpg"
 
 	"github.com/BurntSushi/toml"
 	middleware "github.com/gorilla/handlers"
@@ -90,7 +90,7 @@ func main() {
 
 			switch outgoing.Type {
 			case rpg.ACTION_UPDATE:
-				zone.BuildDisplayData()
+				game.BuildDisplayData(zone)
 				clientsMutex.Lock()
 				for id := range zone.Players {
 					authenticatedClients[id].Write(WSResponse{

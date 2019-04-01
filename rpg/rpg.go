@@ -60,7 +60,7 @@ func NewRPG(defDir string, db *sql.DB) (*RPG, error) {
 	}
 
 	for _, z := range rpg.Zones.AllZones {
-		z.Init(rpg)
+		rpg.InitZone(z)
 	}
 
 	return rpg, nil
@@ -82,7 +82,7 @@ func (g *RPG) HandleMessages() {
 				log.Printf("couldn't find zone %d for player %d (%s), placing at default", p.CurrentZone, p.Id, p.Name)
 				p.CurrentZone = 1
 				zone, _ := g.Zones.Get(1)
-				zone.AddPlayer(p, -1, -1)
+				g.AddPlayer(zone, p, -1, -1)
 				g.Outgoing <- OutgoingMessage{
 					PlayerId: p.Id,
 					Zone:     1,
@@ -96,7 +96,19 @@ func (g *RPG) HandleMessages() {
 				continue
 			}
 
-			if !zone.CanAct(p) {
+			if incoming.Data.Type == ACTION_FACE {
+				g.Players.SetDirty(p.Id)
+				g.PlayerFace(p, zone, incoming.Data.Params)
+				g.Players.Commit()
+				g.Outgoing <- OutgoingMessage{
+					PlayerId: p.Id,
+					Zone:     p.CurrentZone,
+					Type:     ACTION_UPDATE,
+				}
+				continue
+			}
+
+			if !g.CanAct(zone, p) {
 				log.Printf("player tried to act out of order %s", p.Name)
 				continue
 			}
@@ -108,8 +120,6 @@ func (g *RPG) HandleMessages() {
 			switch incoming.Data.Type {
 			case ACTION_MOVE:
 				g.PlayerMove(p, zone, incoming.Data.Params)
-			case ACTION_FACE:
-				g.PlayerFace(p, zone, incoming.Data.Params)
 			case ACTION_USE:
 				g.PlayerUse(p, zone, incoming.Data.Params)
 			case ACTION_TAKE_ITEM:
@@ -124,10 +134,10 @@ func (g *RPG) HandleMessages() {
 				g.PlayerAttack(p, zone, incoming.Data.Params)
 			}
 
-			zone.PostPlayerAction(p)
-			p.BuildStats(g)
-			zone.CheckCombat()
-			zone.BuildCollisionMap()
+			g.PostPlayerAction(zone, p)
+			g.BuildPlayer(p)
+			g.CheckCombat(zone)
+			g.BuildCollisionMap(zone)
 
 			g.Players.Commit()
 
@@ -151,7 +161,7 @@ func (g *RPG) HandleMessages() {
 
 func (g *RPG) PrepareDisplay() {
 	for _, z := range g.Zones.AllZones {
-		z.BuildDisplayData()
+		g.BuildDisplayData(z)
 	}
 }
 
@@ -183,7 +193,7 @@ func (g *RPG) BuildDisplayFor(pId int) DisplayData {
 
 func (g *RPG) Tick() {
 	for id, z := range g.Zones.AllZones {
-		z.Tick()
+		g.ZoneTick(z)
 		if g.Zones.IsDirty(id) {
 			g.Outgoing <- OutgoingMessage{
 				Zone: id,
@@ -206,7 +216,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 
 	p := g.Players.Get(msg.PlayerId)
 	p.Name = name
-	p.Rebuild(g)
+	g.BuildPlayer(p)
 
 	if !ValidFace(p.Facing) {
 		p.Facing = "N"
@@ -216,10 +226,10 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 	}
 
 	if z, hasZone := g.Zones.Get(p.CurrentZone); hasZone {
-		z.AddPlayer(p, p.X, p.Y)
+		g.AddPlayer(z, p, p.X, p.Y)
 	} else {
 		zone, _ := g.Zones.Get(1)
-		zone.AddPlayer(p, 0, 0)
+		g.AddPlayer(zone, p, 0, 0)
 		g.Players.SetDirty(p.Id)
 	}
 
@@ -235,7 +245,7 @@ func (g *RPG) PlayerLeave(id int) {
 	zone := p.CurrentZone
 	g.Players.SetDirty(id)
 	if z, ok := g.Zones.Get(p.CurrentZone); ok {
-		z.RemovePlayer(p)
+		g.RemovePlayer(z, p)
 
 		g.Outgoing <- OutgoingMessage{
 			PlayerId: id,
@@ -254,13 +264,13 @@ func (g *RPG) SaveAll() {
 func (g *RPG) KillPlayer(p *Player) {
 	zone, ok := g.Zones.Get(p.CurrentZone)
 	if ok {
-		ent, err := zone.AddEntity("corpse", p.X, p.Y, false)
+		ent, err := g.AddEntity(zone, "corpse", p.X, p.Y, false)
 		if err == nil {
 			ent.Name = "corpse of " + p.Name
 			ent.Fields["type"] = "player"
 		}
 		g.Zones.SetDirty(p.CurrentZone)
-		zone.SendEffect("wood_ex", effectParams{
+		g.SendEffect(zone, "wood_ex", effectParams{
 			"x": p.X,
 			"y": p.Y,
 		})
@@ -270,12 +280,12 @@ func (g *RPG) KillPlayer(p *Player) {
 
 func (g *RPG) KillNPC(z *Zone, n *NPC) {
 	delete(z.NPCs, n.Id)
-	ent, err := z.AddEntity("corpse", n.X, n.Y, false)
+	ent, err := g.AddEntity(z, "corpse", n.X, n.Y, false)
 	if err == nil {
 		ent.Name = "corpse of " + n.Name
 		ent.Fields["type"] = n.Type
 	}
-	z.SendEffect("wood_ex", effectParams{
+	g.SendEffect(z, "wood_ex", effectParams{
 		"x": n.X,
 		"y": n.Y,
 	})
@@ -284,11 +294,11 @@ func (g *RPG) KillNPC(z *Zone, n *NPC) {
 
 func (g *RPG) PlayerReset(p *Player) {
 	if z, ok := g.Zones.Get(p.CurrentZone); ok {
-		z.RemovePlayer(p)
+		g.RemovePlayer(z, p)
 	}
 	p.HP = p.Stats.MaxHP()
 	zone, _ := g.Zones.Get(1)
-	zone.AddPlayer(p, -1, -1)
+	g.AddPlayer(zone, p, -1, -1)
 
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: p.Id,

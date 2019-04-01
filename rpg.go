@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/panicexpress/backend/rpg"
+	"github.com/jdaiv/px-server/rpg"
 )
 
 func handleGameAction(source *Client, data []byte) (interface{}, error) {

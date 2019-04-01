@@ -3,27 +3,26 @@ package rpg
 import (
 	"fmt"
 	"log"
-	"math/rand"
 )
 
 const MAX_PLAYER_TURN_TIME = 120
 
 type ZoneCombatData struct {
-	InCombat   bool             `json:"inCombat"`
-	Waiting    bool             `json:"waiting"`
-	Delay      int              `json:"delay"`
-	Turn       int              `json:"turn"`
-	Current    int              `json:"current"`
-	SpellData  *CombatSpellData `json:"-"`
-	Combatants []*CombatInfo    `json:"combatants"`
+	InCombat          bool
+	Waiting           bool
+	Delay             int
+	Turn              int
+	Current           Combatant
+	CurrentInitiative int
+	SpellData         *CombatSpellData
+	Combatants        map[Combatant]*CombatInfo
 }
 
 type CombatInfo struct {
-	Initiative int       `json:"initiative"`
-	IsPlayer   bool      `json:"isPlayer"`
-	Id         int       `json:"id"`
-	Timer      int       `json:"timer"`
-	Actor      Combatant `json:"-"`
+	Initiative int  `json:"initiative"`
+	IsPlayer   bool `json:"isPlayer"`
+	Id         int  `json:"id"`
+	Timer      int  `json:"timer"`
 }
 
 type DamageInfo struct {
@@ -32,7 +31,17 @@ type DamageInfo struct {
 	Type   string `json:"type"`
 }
 
-func (z *Zone) CheckCombat() bool {
+type Combatant interface {
+	GetName() string
+	InitCombat() CombatInfo
+	Attack() DamageInfo
+	Damage(DamageInfo)
+	NewTurn(ci *CombatInfo)
+	Tick(g *RPG, z *Zone, ci *CombatInfo)
+	IsTurnOver(ci *CombatInfo) bool
+}
+
+func (g *RPG) CheckCombat(z *Zone) {
 	oldVal := z.CombatInfo.InCombat
 
 	hostiles := false
@@ -46,130 +55,87 @@ func (z *Zone) CheckCombat() bool {
 	// if we've just entered combat, i.e. previously false now true
 	if z.CombatInfo.InCombat && !oldVal {
 		log.Printf("zone %s entering combat!", z.Name)
-		z.Parent.Zones.SetDirty(z.Id)
-		z.StartCombat()
+		g.Zones.SetDirty(z.Id)
+		g.StartCombat(z)
 	} else if !z.CombatInfo.InCombat && oldVal {
 		log.Printf("zone %s exiting combat", z.Name)
-		z.Parent.Zones.SetDirty(z.Id)
+		g.Zones.SetDirty(z.Id)
 	}
-
-	if z.CombatInfo.InCombat {
-		z.CheckCombatants()
-	}
-
-	return z.CombatInfo.InCombat || z.CombatInfo.InCombat != oldVal
 }
 
-func (z *Zone) StartCombat() {
-	z.CombatInfo.SpellData = &CombatSpellData{}
-	z.CombatInfo.Current = 0
-	z.CombatInfo.Turn = 1
-	z.CombatInfo.Combatants = nil
-	z.CombatInfo.Combatants = make([]*CombatInfo, 0)
+func (g *RPG) StartCombat(z *Zone) {
+	ci := z.CombatInfo
+	ci.SpellData = &CombatSpellData{}
+	ci.Current = nil
+	ci.Turn = 1
+	ci.Combatants = nil
+	ci.Combatants = make(map[Combatant]*CombatInfo)
 	for _, p := range z.Players {
-		z.AddCombatant(p, false)
+		ci.AddCombatant(p, false)
 	}
 	for _, n := range z.NPCs {
-		z.AddCombatant(n, false)
+		ci.AddCombatant(n, false)
 	}
-	if len(z.CombatInfo.Combatants) > 0 {
-		z.CombatInfo.Combatants[0].Actor.NewTurn(z.CombatInfo.Combatants[0])
+	if ci.Current != nil {
+		ci.Current.NewTurn(ci.Combatants[ci.Current])
 	}
-	z.AddDelay(2)
+	ci.AddDelay(2)
 }
 
-func (z *Zone) AddDelay(ticks int) {
-	z.CombatInfo.Waiting = true
-	z.CombatInfo.Delay += ticks
-}
-
-func (z *Zone) CheckCombatants() {
-	updatedCombatants := make([]*CombatInfo, 0)
-	changed := false
-	currentChanged := false
-	current := z.CombatInfo.Combatants[z.CombatInfo.Current]
-	currentIdx := z.CombatInfo.Current
-	needNewCurrent := false
-	count := 0
-	for _, info := range z.CombatInfo.Combatants {
+func (g *RPG) CheckCombatants(z *Zone) {
+	toRemove := make([]Combatant, 0)
+	currentLeft := false
+	for c, info := range z.CombatInfo.Combatants {
 		exists := false
-		isCurrent := info.IsPlayer == current.IsPlayer && info.Id == current.Id
 		if info.IsPlayer {
-			for id := range z.Players {
-				if id == info.Id {
-					exists = true
-					break
-				}
-			}
+			_, exists = z.Players[info.Id]
 		} else {
-			for id := range z.NPCs {
-				if id == info.Id {
-					exists = true
-					break
-				}
-			}
+			_, exists = z.NPCs[info.Id]
 		}
 
-		if exists {
-			if isCurrent || needNewCurrent {
-				currentChanged = needNewCurrent
-				needNewCurrent = false
-				currentIdx = count
-			}
-			updatedCombatants = append(updatedCombatants, info)
-			count += 1
-		} else {
-			if isCurrent {
-				needNewCurrent = true
+		if !exists {
+			if c == z.CombatInfo.Current {
+				currentLeft = true
 				log.Printf("current combatant in zone %s left", z.Name)
 			}
-			changed = true
+			toRemove = append(toRemove, c)
 		}
 	}
 
-	if changed {
-		// actor was last in list
-		if needNewCurrent {
-			currentIdx = 0
-			currentChanged = true
-		}
-		z.CombatInfo.Current = currentIdx
-		z.CombatInfo.Combatants = updatedCombatants
-		if currentChanged {
-			z.CombatInfo.Combatants[currentIdx].Actor.NewTurn(z.CombatInfo.Combatants[currentIdx])
-		}
+	for _, c := range toRemove {
+		delete(z.CombatInfo.Combatants, c)
+	}
+
+	if currentLeft {
+		z.CombatInfo.NextCombatant()
+		z.CombatInfo.Current.NewTurn(z.CombatInfo.Combatants[z.CombatInfo.Current])
 	}
 
 	for _, p := range z.Players {
-		z.AddCombatant(p, true)
+		z.CombatInfo.AddCombatant(p, true)
 	}
 	for _, n := range z.NPCs {
-		z.AddCombatant(n, true)
+		z.CombatInfo.AddCombatant(n, true)
 	}
 }
 
-func (z *Zone) AddCombatant(c Combatant, late bool) {
-	info := c.InitCombat()
-	exists := false
-	for _, i := range z.CombatInfo.Combatants {
-		if i.IsPlayer == info.IsPlayer && i.Id == info.Id {
-			exists = true
-			break
+func (g *RPG) CheckAlive(z *Zone) {
+	for c, info := range z.CombatInfo.Combatants {
+		if info.IsPlayer {
+			p := c.(*Player)
+			if p.HP <= 0 {
+				g.KillPlayer(p)
+			}
+		} else {
+			p := c.(*NPC)
+			if p.HP <= 0 {
+				g.KillNPC(z, p)
+			}
 		}
 	}
-	// if were're already added, just fail silently
-	if exists {
-		return
-	}
-
-	// if late {
-	// } else {
-	// }
-
-	z.CombatInfo.Combatants = append(z.CombatInfo.Combatants, &info)
 }
 
-func (z *Zone) CanAct(player *Player) bool {
+func (g *RPG) CanAct(z *Zone, player *Player) bool {
 	ci := z.CombatInfo
 	return !ci.InCombat || (!ci.Waiting &&
 		len(ci.Combatants) > 0 &&
@@ -177,29 +143,27 @@ func (z *Zone) CanAct(player *Player) bool {
 		ci.Combatants[ci.Current].Id == player.Id)
 }
 
-func (z *Zone) NextCombatant() {
-	ci := z.CombatInfo
-	next := ci.Current + 1
-	if next >= len(ci.Combatants) {
-		next = 0
-		ci.Turn += 1
+func (p *Player) CheckAPCost(cost int) bool {
+	if p.Editing {
+		return true
 	}
-	ci.Current = next
-	ci.Combatants[next].Actor.NewTurn(ci.Combatants[next])
-	z.AddDelay(4)
-	z.Parent.Zones.SetDirty(z.Id)
+	if p.AP >= cost {
+		p.AP -= cost
+		return true
+	}
+	return false
 }
 
-func (z *Zone) CombatTick() bool {
+func (g *RPG) CombatTick(z *Zone) bool {
 	ci := z.CombatInfo
 
 	if len(ci.Combatants) <= 0 {
 		return false
 	}
 
-	z.Parent.Zones.SetDirty(z.Id)
+	g.Zones.SetDirty(z.Id)
 
-	spellRunning := ci.SpellData.Tick(z)
+	spellRunning := ci.SpellData.Tick(g, z)
 	if spellRunning {
 		return true
 	}
@@ -213,60 +177,40 @@ func (z *Zone) CombatTick() bool {
 		}
 	}
 
-	z.PostCombatAction()
+	g.PostCombatAction(z)
 
 	return true
 }
 
-func (z *Zone) CheckAPCost(player *Player, cost int) bool {
-	if player.Editing {
-		return true
-	}
-	if player.AP >= cost {
-		player.AP -= cost
-		return true
-	}
-	return false
-}
-
-func (z *Zone) PostPlayerAction(player *Player) {
+func (g *RPG) PostPlayerAction(z *Zone, player *Player) {
 	if !z.CombatInfo.InCombat {
 		return
 	}
-	z.PostCombatAction()
+	g.PostCombatAction(z)
 }
 
-func (z *Zone) PostCombatAction() {
+func (g *RPG) PostCombatAction(z *Zone) {
 	ci := z.CombatInfo
-	current := ci.Combatants[ci.Current]
+	current, ok := ci.Combatants[ci.Current]
+	if !ok {
+		log.Printf("missing combatant")
+		g.CheckAlive(z)
+		g.CheckCombat(z)
+		ci.NextCombatant()
+		return
+	}
 
-	z.CheckAlive()
-	current.Actor.Tick(z, current)
-	z.CheckAlive()
-	z.CheckCombat()
+	g.CheckAlive(z)
+	ci.Current.Tick(g, z, current)
+	g.CheckAlive(z)
+	g.CheckCombat(z)
 
-	if current.Actor.IsTurnOver(current) {
-		z.NextCombatant()
+	if ci.Current.IsTurnOver(current) {
+		ci.NextCombatant()
 	}
 }
 
-func (z *Zone) CheckAlive() {
-	for _, c := range z.CombatInfo.Combatants {
-		if c.IsPlayer {
-			p := c.Actor.(*Player)
-			if p.HP <= 0 {
-				z.Parent.KillPlayer(p)
-			}
-		} else {
-			p := c.Actor.(*NPC)
-			if p.HP <= 0 {
-				z.Parent.KillNPC(z, p)
-			}
-		}
-	}
-}
-
-func (z *Zone) DoMeleeAttack(origin Combatant, target Combatant) {
+func (g *RPG) DoMeleeAttack(z *Zone, origin Combatant, target Combatant) {
 	dmg := origin.Attack()
 	target.Damage(dmg)
 	var msg string
@@ -275,90 +219,78 @@ func (z *Zone) DoMeleeAttack(origin Combatant, target Combatant) {
 	} else {
 		msg = "%s attacked %s for %d damage"
 	}
-	z.SendMessage(nil, fmt.Sprintf(msg,
+	g.SendMessage(z, nil, fmt.Sprintf(msg,
 		origin.GetName(), target.GetName(), dmg.Amount))
 }
 
-func (z *Zone) DoSpellAttack(origin *Player, spell SpellDef, x, y int) {
-	delay := z.CombatInfo.SpellData.RunSpell(z, spell, origin.X, origin.Y, x, y)
+func (g *RPG) DoSpellAttack(z *Zone, origin *Player, spell SpellDef, x, y int) {
+	delay := z.CombatInfo.SpellData.RunSpell(g, z, spell, origin.X, origin.Y, x, y)
 	if delay {
 		z.CombatInfo.Waiting = true
 	}
 }
 
-type Combatant interface {
-	GetName() string
-	InitCombat() CombatInfo
-	Attack() DamageInfo
-	Damage(DamageInfo)
-	NewTurn(ci *CombatInfo)
-	Tick(z *Zone, ci *CombatInfo)
-	IsTurnOver(ci *CombatInfo) bool
+func (d *ZoneCombatData) AddDelay(ticks int) {
+	d.Delay += ticks
+	d.Waiting = true
 }
 
-func (n *NPC) GetName() string {
-	return n.Name
-}
-
-func (n *NPC) InitCombat() CombatInfo {
-	return CombatInfo{
-		Initiative: rand.Intn(20),
-		IsPlayer:   false,
-		Id:         n.Id,
-		Actor:      n,
+func (d *ZoneCombatData) AddCombatant(c Combatant, late bool) {
+	info := c.InitCombat()
+	if _, exists := d.Combatants[c]; exists {
+		return
 	}
-}
-
-func (n *NPC) Attack() DamageInfo {
-	return n.Stats.RollPhysDamage()
-}
-
-func (n *NPC) Damage(dmg DamageInfo) {
-	n.HP -= dmg.Amount
-}
-
-func (n *NPC) NewTurn(ci *CombatInfo) {
-
-}
-
-func (n *NPC) Tick(z *Zone, ci *CombatInfo) {
-	n.CombatTick(z)
-}
-
-func (n *NPC) IsTurnOver(ci *CombatInfo) bool {
-	return true
-}
-
-func (p *Player) GetName() string {
-	return p.Name
-}
-
-func (p *Player) InitCombat() CombatInfo {
-	return CombatInfo{
-		Initiative: rand.Intn(20),
-		IsPlayer:   true,
-		Id:         p.Id,
-		Actor:      p,
+	if late {
+		lowest := d.CurrentInitiative
+		for _, info := range d.Combatants {
+			if info.Initiative < lowest {
+				lowest = info.Initiative
+			}
+		}
+		info.Initiative = lowest - 1
+	} else {
+		info.Initiative *= 1000
 	}
+	inserted := false
+	for !inserted {
+		overlap := false
+		for _, i := range d.Combatants {
+			if i.Initiative == info.Initiative {
+				overlap = true
+				break
+			}
+		}
+		if overlap {
+			info.Initiative -= 1
+		} else {
+			inserted = true
+		}
+	}
+	d.Combatants[c] = &info
 }
 
-func (p *Player) Attack() DamageInfo {
-	return p.Stats.RollPhysDamage()
-}
-
-func (p *Player) Damage(dmg DamageInfo) {
-	p.HP -= dmg.Amount
-}
-
-func (p *Player) NewTurn(ci *CombatInfo) {
-	p.AP = p.Stats.MaxAP()
-	ci.Timer = MAX_PLAYER_TURN_TIME
-}
-
-func (p *Player) Tick(z *Zone, ci *CombatInfo) {
-	ci.Timer -= 1
-}
-
-func (p *Player) IsTurnOver(ci *CombatInfo) bool {
-	return ci.Timer <= 0 || p.AP <= 0
+func (d *ZoneCombatData) NextCombatant() {
+	hasNext := false
+	highest := -9999999
+	for c, info := range d.Combatants {
+		if info.Initiative < d.CurrentInitiative && info.Initiative > highest {
+			d.Current = c
+			highest = info.Initiative
+			hasNext = true
+		}
+	}
+	if !hasNext {
+		highest = -9999999
+		for c, info := range d.Combatants {
+			if info.Initiative > highest {
+				d.Current = c
+				highest = info.Initiative
+			}
+		}
+		d.Turn += 1
+	}
+	info := d.Combatants[d.Current]
+	d.CurrentInitiative = info.Initiative
+	d.Current.NewTurn(info)
+	d.AddDelay(4)
 }

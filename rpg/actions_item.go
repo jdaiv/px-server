@@ -22,14 +22,14 @@ func (g *RPG) PlayerTakeItem(p *Player, z *Zone, params ActionParams) {
 
 	log.Printf("[rpg/zone/%s/take_item] grabbing item %d", z.Name, itemId)
 
-	if !z.CheckAPCost(p, 1) {
+	if !p.CheckAPCost(1) {
 		return
 	}
 
 	item.Give(p)
 	g.Items.Save(item)
 	delete(z.Items, itemId)
-	p.Rebuild(g)
+	g.BuildPlayer(p)
 
 	g.Zones.SetDirty(z.Id)
 }
@@ -41,11 +41,11 @@ func (g *RPG) PlayerEquipItem(p *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	if !zone.CheckAPCost(p, 1) {
+	if !p.CheckAPCost(1) {
 		return
 	}
-	p.EquipItem(g, itemId)
-	p.Rebuild(g)
+	g.EquipItem(p, itemId)
+	g.BuildPlayer(p)
 }
 
 func (g *RPG) PlayerUnequipItem(p *Player, zone *Zone, params ActionParams) {
@@ -55,11 +55,11 @@ func (g *RPG) PlayerUnequipItem(p *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	if !zone.CheckAPCost(p, 1) {
+	if !p.CheckAPCost(1) {
 		return
 	}
-	p.UnequipItem(g, slot)
-	p.Rebuild(g)
+	g.UnequipItem(p, slot)
+	g.BuildPlayer(p)
 }
 
 func (g *RPG) PlayerDropItem(p *Player, zone *Zone, params ActionParams) {
@@ -69,9 +69,9 @@ func (g *RPG) PlayerDropItem(p *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	dropped := p.DropItem(zone, itemId)
+	dropped := g.DropItem(zone, p, itemId)
 	if dropped {
 		g.Zones.SetDirty(zone.Id)
 	}
-	p.Rebuild(g)
+	g.BuildPlayer(p)
 }
