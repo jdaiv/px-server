@@ -44,8 +44,8 @@ func (p *Player) GetInfo(base *RPG) PlayerInfo {
 		Facing:    p.Facing,
 		HP:        p.HP,
 		AP:        p.AP,
-		MaxHP:     p.Stats.MaxHP(),
-		MaxAP:     p.Stats.MaxAP(),
+		MaxHP:     p.Stats.MaxHP,
+		MaxAP:     p.Stats.MaxAP,
 		Stats:     p.Stats,
 		Skills:    p.Skills,
 		Level:     p.Skills.TotalLevel(),
@@ -61,7 +61,7 @@ func (p Player) GetInfoPublic(base *RPG) PlayerInfo {
 		Y:      p.Y,
 		Facing: p.Facing,
 		HP:     p.HP,
-		MaxHP:  p.Stats.MaxHP(),
+		MaxHP:  p.Stats.MaxHP,
 		Level:  p.Skills.TotalLevel(),
 	}
 }
@@ -180,7 +180,6 @@ type SpellInfo struct {
 func (s SpellDef) GetInfo() SpellInfo {
 	return SpellInfo{
 		Name:  s.Name,
-		Skill: s.Skill,
 		Level: s.Level,
 		Cost:  s.Cost,
 	}

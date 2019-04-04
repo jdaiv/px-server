@@ -3,5 +3,4 @@
 DefaultName = 'blob'
 Alignment = 'hostile'
 Logic = 'blob'
-HP = 20
-Skills = { PhysAttack = 5, PhysDefence = 4 }
+Skills = { PhysAttack = { Level = 0 }, Defence = { Level = 10 } }

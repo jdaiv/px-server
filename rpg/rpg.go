@@ -222,7 +222,7 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 		p.Facing = "N"
 	}
 	if p.HP <= 0 {
-		p.HP = p.Stats.MaxHP()
+		p.HP = p.Stats.MaxHP
 	}
 
 	if z, hasZone := g.Zones.Get(p.CurrentZone); hasZone {
@@ -296,7 +296,7 @@ func (g *RPG) PlayerReset(p *Player) {
 	if z, ok := g.Zones.Get(p.CurrentZone); ok {
 		g.RemovePlayer(z, p)
 	}
-	p.HP = p.Stats.MaxHP()
+	p.HP = p.Stats.MaxHP
 	zone, _ := g.Zones.Get(1)
 	g.AddPlayer(zone, p, -1, -1)
 

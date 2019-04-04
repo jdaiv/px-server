@@ -47,7 +47,6 @@ type NPCDef struct {
 	DefaultName string
 	Alignment   string
 	Logic       string
-	HP          int
 	Slots       map[string]string
 	Skills      SkillBlock
 }
@@ -74,7 +73,6 @@ type SkillDef struct {
 
 type SpellDef struct {
 	Name    string
-	Skill   string
 	Level   int
 	Cost    int
 	Effects []SpellEffectDef

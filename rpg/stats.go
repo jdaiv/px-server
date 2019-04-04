@@ -1,17 +1,19 @@
 package rpg
 
 import (
+	"log"
 	"math/rand"
 )
 
 type StatBlock struct {
 	AttackPhys     int `json:"attack_phys"`
 	AttackMagic    int `json:"attack_magic"`
-	DefensePhys    int `json:"defense_phys"`
-	DefenseMagic   int `json:"defense_magic"`
+	Defence        int `json:"defence"`
 	CriticalChance int `json:"critical_chance"`
 	Speed          int `json:"speed"`
-	Dodge          int `json:"dodge"`
+	MaxHP          int `json:"maxHP"`
+	MaxAP          int `json:"maxAP"`
+	MaxMP          int `json:"maxMP"`
 }
 
 type SpecialBlock struct {
@@ -20,14 +22,10 @@ type SpecialBlock struct {
 }
 
 type SkillBlock struct {
-	AttackMelee  Skill `json:"attack_melee"`
-	AttackRanged Skill `json:"attack_ranged"`
-	DefensePhys  Skill `json:"defense_phys"`
-	DefenseMagic Skill `json:"defense_magic"`
-	Dodge        Skill `json:"dodge"`
-	MagicFire    Skill `json:"magic_fire"`
-	MagicIce     Skill `json:"magic_ice"`
-	MagicStone   Skill `json:"magic_stone"`
+	Attack  Skill `json:"attack"`
+	Defence Skill `json:"defence"`
+	Speed   Skill `json:"speed"`
+	Magic   Skill `json:"magic"`
 }
 
 type Skill struct {
@@ -37,13 +35,14 @@ type Skill struct {
 
 func (s SkillBlock) BuildStats() StatBlock {
 	return StatBlock{
-		AttackPhys:     s.AttackMelee.Level + s.AttackRanged.Level,
-		AttackMagic:    s.MagicFire.Level + s.MagicIce.Level + s.MagicStone.Level,
-		DefensePhys:    s.DefensePhys.Level * 2,
-		DefenseMagic:   s.DefenseMagic.Level * 2,
-		CriticalChance: 5,
-		Speed:          5,
-		Dodge:          s.Dodge.Level,
+		AttackPhys:     5 + s.Attack.Level*2,
+		AttackMagic:    1 + s.Magic.Level*2,
+		Defence:        4 + s.Defence.Level*2,
+		CriticalChance: 5 + s.Attack.Level/10,
+		Speed:          5 + s.Speed.Level,
+		MaxHP:          10 + s.Defence.Level*4,
+		MaxAP:          6 + s.Speed.Level/2,
+		MaxMP:          5 + s.Magic.Level*5,
 	}
 }
 
@@ -58,51 +57,32 @@ func (s *Skill) AddXP(amt int) {
 func (s StatBlock) Add(b StatBlock) StatBlock {
 	s.AttackPhys += b.AttackPhys
 	s.AttackMagic += b.AttackMagic
-	s.DefensePhys += b.DefensePhys
-	s.DefenseMagic += b.DefenseMagic
+	s.Defence += b.Defence
 	s.CriticalChance += b.CriticalChance
 	s.Speed += b.Speed
-	s.Dodge += b.Dodge
+	s.MaxHP += b.MaxHP
+	s.MaxAP += b.MaxAP
+	s.MaxMP += b.MaxMP
 	return s
 }
 
-func (s StatBlock) MaxHP() int {
-	return 10 + s.DefensePhys/2
-}
-
-func (s StatBlock) MaxAP() int {
-	return 1 + s.Speed
-}
-
 func (s SkillBlock) TotalLevel() int {
-	return s.AttackMelee.Level +
-		s.AttackRanged.Level +
-		s.DefensePhys.Level +
-		s.DefenseMagic.Level +
-		s.Dodge.Level +
-		s.MagicFire.Level +
-		s.MagicIce.Level +
-		s.MagicStone.Level
+	return s.Attack.Level +
+		s.Defence.Level +
+		s.Speed.Level +
+		s.Magic.Level
 }
 
 func (s SkillBlock) GetSkillLevel(name string) int {
 	switch name {
-	case "attack_melee":
-		return s.AttackMelee.Level
-	case "attack_ranged":
-		return s.AttackRanged.Level
-	case "defense_phys":
-		return s.DefensePhys.Level
-	case "defense_magic":
-		return s.DefenseMagic.Level
-	case "dodge":
-		return s.Dodge.Level
-	case "magic_fire":
-		return s.MagicFire.Level
-	case "magic_ice":
-		return s.MagicIce.Level
-	case "magic_stone":
-		return s.MagicStone.Level
+	case "attack":
+		return s.Attack.Level
+	case "Defence":
+		return s.Defence.Level
+	case "speed":
+		return s.Speed.Level
+	case "magic":
+		return s.Magic.Level
 	}
 	return 0
 }
@@ -117,5 +97,53 @@ func (s StatBlock) RollPhysDamage() DamageInfo {
 	if crit {
 		dmg *= 2
 	}
-	return DamageInfo{dmg, crit, "slash"}
+	return DamageInfo{dmg, crit, false}
+}
+
+func (s StatBlock) RollDefence(dmg DamageInfo) DamageInfo {
+	if dmg.Crit {
+		return dmg
+	}
+	if dmg.Amount < s.Defence/4 {
+		dmg.Amount = 0
+	} else {
+		if dmg.Magic {
+			dmg.Amount -= s.AttackMagic / 10
+		}
+		dmg.Amount -= s.Defence / 6
+	}
+	return dmg
+}
+
+type XPEvent int
+
+const (
+	EVENT_PHYS_DAMAGE = iota
+	EVENT_MAGIC_DAMAGE
+	EVENT_PHYS_DEFENCE
+	EVENT_MAGIC_DEFENCE
+	EVENT_DODGE
+)
+
+func (g *RPG) RecordEvent(p *Player, opposingLevel int, actionType XPEvent, amt int) {
+	mod := float64(opposingLevel-p.Skills.TotalLevel())/10.0 + 1
+	if mod < 0 {
+		return
+	}
+	total := mod * float64(amt)
+	log.Printf("Awarding %s %f XP", p.Name, total)
+	switch actionType {
+	case EVENT_PHYS_DAMAGE:
+		p.Skills.Attack.AddXP(int(total))
+	case EVENT_MAGIC_DAMAGE:
+		p.Skills.Magic.AddXP(int(total))
+	case EVENT_PHYS_DEFENCE:
+		p.Skills.Defence.AddXP(int(total))
+	case EVENT_MAGIC_DEFENCE:
+		p.Skills.Defence.AddXP(int(total * 0.7))
+		p.Skills.Magic.AddXP(int(total * 0.4))
+	case EVENT_DODGE:
+		p.Skills.Defence.AddXP(int(total * 0.2))
+		p.Skills.Speed.AddXP(int(total * 0.9))
+	}
 }

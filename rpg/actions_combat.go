@@ -34,8 +34,8 @@ func (g *RPG) PlayerAttack(p *Player, z *Zone, params ActionParams) {
 			return
 		}
 
-		g.DoMeleeAttack(z, p, npc)
-		p.Skills.AttackMelee.AddXP(5)
+		dmg := g.DoMeleeAttack(z, p, npc)
+		g.RecordEvent(p, npc.Skills.TotalLevel(), EVENT_PHYS_DAMAGE, dmg.Amount/4+5)
 
 		g.SendEffect(z, "wood_ex", effectParams{
 			"x": npc.X,

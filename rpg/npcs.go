@@ -76,8 +76,8 @@ func (g *RPG) NewNPC(z *Zone, npcType string, x, y int) (*NPC, error) {
 		Type:      npcType,
 		X:         x,
 		Y:         y,
-		HP:        npcDef.HP,
-		MaxHP:     npcDef.HP,
+		HP:        stats.MaxHP,
+		MaxHP:     stats.MaxHP,
 		Alignment: npcDef.Alignment,
 		Logic:     npcDef.Logic,
 		Skills:    npcDef.Skills,
@@ -115,8 +115,10 @@ func (n *NPC) Attack() DamageInfo {
 	return n.Stats.RollPhysDamage()
 }
 
-func (n *NPC) Damage(dmg DamageInfo) {
+func (n *NPC) Damage(dmg DamageInfo) DamageInfo {
+	dmg = n.Stats.RollDefence(dmg)
 	n.HP -= dmg.Amount
+	return dmg
 }
 
 func (n *NPC) NewTurn(ci *CombatInfo) {

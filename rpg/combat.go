@@ -26,16 +26,16 @@ type CombatInfo struct {
 }
 
 type DamageInfo struct {
-	Amount int    `json:"amount"`
-	Crit   bool   `json:"crit"`
-	Type   string `json:"type"`
+	Amount int  `json:"amount"`
+	Crit   bool `json:"crit"`
+	Magic  bool `json:"magic"`
 }
 
 type Combatant interface {
 	GetName() string
 	InitCombat() CombatInfo
 	Attack() DamageInfo
-	Damage(DamageInfo)
+	Damage(DamageInfo) DamageInfo
 	NewTurn(ci *CombatInfo)
 	Tick(g *RPG, z *Zone, ci *CombatInfo)
 	IsTurnOver(ci *CombatInfo) bool
@@ -210,17 +210,30 @@ func (g *RPG) PostCombatAction(z *Zone) {
 	}
 }
 
-func (g *RPG) DoMeleeAttack(z *Zone, origin Combatant, target Combatant) {
+func (g *RPG) DoMeleeAttack(z *Zone, origin Combatant, target Combatant) DamageInfo {
 	dmg := origin.Attack()
-	target.Damage(dmg)
+	afterDefense := target.Damage(dmg)
 	var msg string
-	if dmg.Crit {
+	if dmg.Amount == 0 {
+		msg = "%s attacked %s (BLOCKED)"
+	} else if dmg.Crit {
 		msg = "%s attacked %s for %d damage (CRITICAL)"
 	} else {
 		msg = "%s attacked %s for %d damage"
 	}
 	g.SendMessage(z, nil, fmt.Sprintf(msg,
-		origin.GetName(), target.GetName(), dmg.Amount))
+		origin.GetName(), target.GetName(), afterDefense.Amount))
+
+	if p, ok := target.(*Player); ok {
+		blocked := dmg.Amount - afterDefense.Amount + 5
+		if dmg.Magic {
+			g.RecordEvent(p, p.Skills.TotalLevel(), EVENT_MAGIC_DEFENCE, blocked)
+		} else {
+			g.RecordEvent(p, p.Skills.TotalLevel(), EVENT_PHYS_DEFENCE, blocked)
+		}
+	}
+
+	return dmg
 }
 
 func (g *RPG) DoSpellAttack(z *Zone, origin *Player, spell SpellDef, x, y int) {

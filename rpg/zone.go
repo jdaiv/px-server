@@ -71,8 +71,8 @@ func (g *RPG) ZoneTick(z *Zone) {
 		g.CombatTick(z)
 	} else {
 		for _, p := range z.Players {
-			maxHP := p.Stats.MaxHP()
-			maxAP := p.Stats.MaxAP()
+			maxHP := p.Stats.MaxHP
+			maxAP := p.Stats.MaxAP
 
 			if p.Timers.HP <= 0 {
 				if p.HP < maxHP {

@@ -56,7 +56,7 @@ func (d *CombatSpellData) Tick(g *RPG, z *Zone) bool {
 					dist := math.Sqrt(math.Pow(float64(n.X-d.TargetX), 2) +
 						math.Pow(float64(n.Y-d.TargetY), 2))
 					if dist <= float64(effect.Range) {
-						n.Damage(DamageInfo{effect.Damage, false, "spell"})
+						n.Damage(DamageInfo{effect.Damage, false, true})
 					}
 				}
 				if effect.Effect != "" {

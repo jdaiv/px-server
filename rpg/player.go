@@ -117,7 +117,7 @@ func (g *RPG) DropItem(zone *Zone, p *Player, itemId int) bool {
 func (g *RPG) GetSpellsFor(p *Player) map[string]SpellDef {
 	spells := make(map[string]SpellDef)
 	for n, s := range g.Defs.Spells {
-		req := p.Skills.GetSkillLevel(s.Skill)
+		req := p.Skills.Magic.Level
 		if req >= s.Level {
 			spells[n] = s
 		}
@@ -131,7 +131,7 @@ func (p *Player) GetName() string {
 
 func (p *Player) InitCombat() CombatInfo {
 	return CombatInfo{
-		Initiative: rand.Intn(20),
+		Initiative: rand.Intn(20) + p.Stats.Speed/2,
 		IsPlayer:   true,
 		Id:         p.Id,
 	}
@@ -141,12 +141,14 @@ func (p *Player) Attack() DamageInfo {
 	return p.Stats.RollPhysDamage()
 }
 
-func (p *Player) Damage(dmg DamageInfo) {
-	p.HP -= dmg.Amount
+func (p *Player) Damage(dmg DamageInfo) DamageInfo {
+	def := p.Stats.RollDefence(dmg)
+	p.HP -= def.Amount
+	return def
 }
 
 func (p *Player) NewTurn(ci *CombatInfo) {
-	p.AP = p.Stats.MaxAP()
+	p.AP = p.Stats.MaxAP
 	ci.Timer = MAX_PLAYER_TURN_TIME
 }
 
