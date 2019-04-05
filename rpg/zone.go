@@ -1,7 +1,6 @@
 package rpg
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -22,22 +21,28 @@ type Zone struct {
 }
 
 type ZoneDisplayData struct {
-	Name              string           `json:"name"`
-	Width             int              `json:"width"`
-	Height            int              `json:"height"`
-	Map               map[string]*tile `json:"map"`
-	Entities          []EntityInfo     `json:"entities"`
-	Players           []PlayerInfo     `json:"players"`
-	NPCs              []NPCInfo        `json:"npcs"`
-	Items             []ItemInfo       `json:"items"`
-	InCombat          bool             `json:"inCombat"`
-	CurrentInitiative int              `json:"currentInitiative"`
-	Combatants        []CombatInfo     `json:"combatants"`
+	Name              string       `json:"name"`
+	Width             int          `json:"width"`
+	Height            int          `json:"height"`
+	Map               []tile       `json:"map"`
+	Entities          []EntityInfo `json:"entities"`
+	Players           []PlayerInfo `json:"players"`
+	NPCs              []NPCInfo    `json:"npcs"`
+	Items             []ItemInfo   `json:"items"`
+	InCombat          bool         `json:"inCombat"`
+	CurrentInitiative int          `json:"currentInitiative"`
+	Combatants        []CombatInfo `json:"combatants"`
 }
 
 func (g *RPG) InitZone(z *Zone) {
 	if z.Map == nil {
 		z.Map = NewZoneMap(10, 10, g.Defs.Tiles[2])
+	} else {
+		for k, t := range z.Map.Tiles {
+			x, y := uncompactCoords(k)
+			t.X = x
+			t.Y = y
+		}
 	}
 	g.Items.LoadIntoZone(z)
 	z.Players = make(map[int]*Player)
@@ -128,13 +133,14 @@ func (g *RPG) BuildCollisionMap(z *Zone) {
 }
 
 func (g *RPG) BuildDisplayData(z *Zone) {
-	tiles := make(map[string]*tile)
-	for i, t := range z.Map.Tiles {
-		x, y := uncompactCoords(i)
-		tiles[fmt.Sprintf("%d,%d", x, y)] = t
+	tiles := make([]tile, len(z.Map.Tiles))
+	idx := 0
+	for _, t := range z.Map.Tiles {
+		tiles[idx] = *t
+		idx++
 	}
 	entities := make([]EntityInfo, len(z.Entities))
-	idx := 0
+	idx = 0
 	for _, e := range z.Entities {
 		entities[idx] = e.GetInfo()
 		idx++

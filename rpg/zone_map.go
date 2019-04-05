@@ -16,6 +16,8 @@ func uncompactCoords(c uint64) (int, int) {
 
 type tile struct {
 	Tile        int  `json:"id"`
+	X           int  `json:"x"`
+	Y           int  `json:"y"`
 	Blocking    bool `json:"-"`
 	BlockingEnt bool `json:"-"`
 }
@@ -55,7 +57,7 @@ func (m *ZoneMap) SetTile(x, y int, t TileDef) {
 	if y > m.MaxY {
 		m.MaxY = y
 	}
-	m.Tiles[compactCoords(x, y)] = &tile{t.Id, t.Blocking, false}
+	m.Tiles[compactCoords(x, y)] = &tile{t.Id, x, y, t.Blocking, false}
 }
 
 func (m *ZoneMap) SetBlocking(x, y int, blocking bool) {
