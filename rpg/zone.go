@@ -224,12 +224,24 @@ func (g *RPG) SendMessage(z *Zone, player *Player, text string) {
 type effectParams map[string]interface{}
 
 func (g *RPG) SendEffect(z *Zone, effectType string, params effectParams) {
+	params["single"] = true
 	params["type"] = effectType
 	g.Outgoing <- OutgoingMessage{
 		PlayerId: -1,
 		Zone:     z.Id,
 		Type:     ACTION_EFFECT,
 		Params:   params,
+	}
+}
+func (g *RPG) SendEffects(z *Zone, list []effectParams) {
+	g.Outgoing <- OutgoingMessage{
+		PlayerId: -1,
+		Zone:     z.Id,
+		Type:     ACTION_EFFECT,
+		Params: map[string]interface{}{
+			"single":  false,
+			"effects": list,
+		},
 	}
 }
 

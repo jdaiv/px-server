@@ -9,12 +9,10 @@ const MAX_PLAYER_TURN_TIME = 120
 
 type ZoneCombatData struct {
 	InCombat          bool
-	Waiting           bool
-	Delay             int
+	CurrentSequence   *Sequence
 	Turn              int
 	Current           Combatant
 	CurrentInitiative int
-	SpellData         *CombatSpellData
 	Combatants        map[Combatant]*CombatInfo
 }
 
@@ -65,7 +63,6 @@ func (g *RPG) CheckCombat(z *Zone) {
 
 func (g *RPG) StartCombat(z *Zone) {
 	ci := z.CombatInfo
-	ci.SpellData = &CombatSpellData{}
 	ci.Current = nil
 	ci.Turn = 1
 	ci.Combatants = nil
@@ -79,7 +76,9 @@ func (g *RPG) StartCombat(z *Zone) {
 	if ci.Current != nil {
 		ci.Current.NewTurn(ci.Combatants[ci.Current])
 	}
-	ci.AddDelay(2)
+	seq := NewSequence()
+	seq.AddEffect("start_combat", 0, 0, 4)
+	ci.CurrentSequence = seq
 }
 
 func (g *RPG) CheckCombatants(z *Zone) {
@@ -137,10 +136,14 @@ func (g *RPG) CheckAlive(z *Zone) {
 
 func (g *RPG) CanAct(z *Zone, player *Player) bool {
 	ci := z.CombatInfo
-	return !ci.InCombat || (!ci.Waiting &&
+	return !ci.InCombat || (!g.CombatSequencePlaying(z) &&
 		len(ci.Combatants) > 0 &&
 		ci.Combatants[ci.Current].IsPlayer &&
 		ci.Combatants[ci.Current].Id == player.Id)
+}
+
+func (g *RPG) CombatSequencePlaying(z *Zone) bool {
+	return z.CombatInfo.CurrentSequence != nil && !z.CombatInfo.CurrentSequence.Done
 }
 
 func (p *Player) CheckAPCost(cost int) bool {
@@ -163,17 +166,89 @@ func (g *RPG) CombatTick(z *Zone) bool {
 
 	g.Zones.SetDirty(z.Id)
 
-	spellRunning := ci.SpellData.Tick(g, z)
-	if spellRunning {
-		return true
-	}
-
-	if ci.Waiting {
-		if ci.Delay > 0 {
-			ci.Delay -= 1
-			return true
+	if g.CombatSequencePlaying(z) {
+		seq := ci.CurrentSequence
+		if len(seq.Actions) <= 0 {
+			seq.Done = true
 		} else {
-			ci.Waiting = false
+			if seq.ActionTimer > 0 {
+				seq.ActionTimer -= 1
+				return true
+			}
+			for seq.ActionTimer <= 0 {
+				if seq.ActionIdx >= len(seq.Actions) {
+					seq.Done = true
+					break
+				}
+
+				act := seq.Actions[seq.ActionIdx]
+
+				effects := make([]effectParams, 0)
+
+				switch act.Type {
+				case SEQ_ACTION_ANIM:
+					effects = append(effects, effectParams{
+						"type":       "animation",
+						"animation":  act.AnimationId,
+						"targetId":   act.TargetX,
+						"targetType": act.TargetType,
+					})
+				case SEQ_ACTION_DAMAGE:
+					var damage DamageInfo
+					if act.TargetType == SEQ_TARGET_TYPE_NPC {
+						npc, ok := z.NPCs[act.TargetX]
+						if ok {
+							damage = npc.Damage(act.Damage)
+						}
+					} else {
+						player, ok := z.Players[act.TargetX]
+						if ok {
+							damage = player.Damage(act.Damage)
+						}
+					}
+					effects = append(effects, effectParams{
+						"type":       "damage",
+						"damage":     damage,
+						"targetId":   act.TargetX,
+						"targetType": act.TargetType,
+					})
+				case SEQ_ACTION_EFFECT:
+					var x int
+					var y int
+					if act.SourceType == SEQ_TARGET_TYPE_NPC {
+						npc, ok := z.NPCs[act.SourceX]
+						if ok {
+							x = npc.X
+							y = npc.Y
+						}
+					} else if act.SourceType == SEQ_TARGET_TYPE_PLAYER {
+						player, ok := z.Players[act.SourceX]
+						if ok {
+							x = player.X
+							y = player.Y
+						}
+					} else {
+						x = act.SourceX
+						y = act.SourceY
+					}
+					effects = append(effects, effectParams{
+						"type":    "effect",
+						"effect":  act.EffectName,
+						"sourceX": x,
+						"sourceY": y,
+						// "sourceType": act.SourceType,
+						"targetX": act.TargetX,
+						"targetY": act.TargetY,
+						// "targetType": act.TargetType,
+					})
+				}
+
+				g.SendEffects(z, effects)
+
+				seq.ActionTimer = act.Duration
+				seq.ActionIdx += 1
+			}
+			return true
 		}
 	}
 
@@ -236,18 +311,6 @@ func (g *RPG) DoMeleeAttack(z *Zone, origin Combatant, target Combatant) DamageI
 	return dmg
 }
 
-func (g *RPG) DoSpellAttack(z *Zone, origin *Player, spell SpellDef, x, y int) {
-	delay := z.CombatInfo.SpellData.RunSpell(g, z, spell, origin.X, origin.Y, x, y)
-	if delay {
-		z.CombatInfo.Waiting = true
-	}
-}
-
-func (d *ZoneCombatData) AddDelay(ticks int) {
-	d.Delay += ticks
-	d.Waiting = true
-}
-
 func (d *ZoneCombatData) AddCombatant(c Combatant, late bool) {
 	info := c.InitCombat()
 	if _, exists := d.Combatants[c]; exists {
@@ -305,5 +368,8 @@ func (d *ZoneCombatData) NextCombatant() {
 	info := d.Combatants[d.Current]
 	d.CurrentInitiative = info.Initiative
 	d.Current.NewTurn(info)
-	d.AddDelay(4)
+
+	seq := NewSequence()
+	seq.AddSpellEffect("new_turn", info.Id, !info.IsPlayer, 0, 0, 4)
+	d.CurrentSequence = seq
 }

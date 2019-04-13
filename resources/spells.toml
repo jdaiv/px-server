@@ -4,7 +4,7 @@ Name = 'fireball'
 Level = 0
 Cost = 1
 Effects = [
-    {Type = 'effect', Effect = 'fireball', Duration = 7, Origin = 'player', Target = 'target'},
+    {Type = 'effect', Effect = 'fireball', Duration = 5, Origin = 'player', Target = 'target'},
     {Type = 'aoe', Effect = 'fire', Duration = 0, Range = 1, Damage = 5, Target = 'enemies'},
     # {Type = 'apply', Effect = 'fire', Duration = 0, Range = 2, Damage = 1},
 ]
