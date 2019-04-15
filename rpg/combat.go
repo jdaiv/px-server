@@ -138,6 +138,7 @@ func (g *RPG) CanAct(z *Zone, player *Player) bool {
 	ci := z.CombatInfo
 	return !ci.InCombat || (!g.CombatSequencePlaying(z) &&
 		len(ci.Combatants) > 0 &&
+		ci.Current != nil &&
 		ci.Combatants[ci.Current].IsPlayer &&
 		ci.Combatants[ci.Current].Id == player.Id)
 }
