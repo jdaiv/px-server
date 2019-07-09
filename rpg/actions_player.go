@@ -18,9 +18,6 @@ func (g *RPG) PlayerMove(p *Player, z *Zone, params ActionParams) {
 		return
 	}
 
-	if !p.CheckAPCost(1) {
-		return
-	}
 	p.X = x
 	p.Y = y
 	g.Zones.SetDirty(z.Id)

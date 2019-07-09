@@ -16,34 +16,26 @@ type Zone struct {
 	Players     map[int]*Player `json:"-"`
 	Items       map[int]bool    `json:"-"`
 
-	CombatInfo  *ZoneCombatData `json:"-"`
 	DisplayData ZoneDisplayData `json:"-"`
 }
 
 type ZoneDisplayData struct {
-	Name              string       `json:"name"`
-	Width             int          `json:"width"`
-	Height            int          `json:"height"`
-	Map               []tile       `json:"map"`
-	Entities          []EntityInfo `json:"entities"`
-	Players           []PlayerInfo `json:"players"`
-	NPCs              []NPCInfo    `json:"npcs"`
-	Items             []ItemInfo   `json:"items"`
-	InCombat          bool         `json:"inCombat"`
-	CurrentInitiative int          `json:"currentInitiative"`
-	Combatants        []CombatInfo `json:"combatants"`
+	Name     string       `json:"name"`
+	Width    int          `json:"width"`
+	Height   int          `json:"height"`
+	Map      []*tile      `json:"map"`
+	Entities []EntityInfo `json:"entities"`
+	Players  []PlayerInfo `json:"players"`
+	NPCs     []NPCInfo    `json:"npcs"`
+	Items    []ItemInfo   `json:"items"`
+	InCombat bool         `json:"inCombat"`
 }
 
 func (g *RPG) InitZone(z *Zone) {
-	if z.Map == nil {
-		z.Map = NewZoneMap(10, 10, g.Defs.Tiles[2])
-	} else {
-		for k, t := range z.Map.Tiles {
-			x, y := uncompactCoords(k)
-			t.X = x
-			t.Y = y
-		}
-	}
+	// if z.Map == nil {
+	z.Map = NewZoneMap(OVERWORLD_ZONE_SIZE, OVERWORLD_ZONE_SIZE, g.Defs.Tiles[2])
+	g.GenerateOverworldTile(0, 0, z.Map)
+	// }
 	g.Items.LoadIntoZone(z)
 	z.Players = make(map[int]*Player)
 	if z.Entities == nil {
@@ -68,44 +60,12 @@ func (g *RPG) InitZone(z *Zone) {
 	}
 	z.Items = make(map[int]bool)
 	g.BuildCollisionMap(z)
-	z.CombatInfo = &ZoneCombatData{}
 }
 
 func (g *RPG) ZoneTick(z *Zone) {
-	if z.CombatInfo.InCombat {
-		g.CombatTick(z)
-	} else {
-		for _, p := range z.Players {
-			maxHP := p.Stats.MaxHP
-			maxAP := p.Stats.MaxAP
-
-			if p.Timers.HP <= 0 {
-				if p.HP < maxHP {
-					p.HP += 1
-					if p.HP > maxHP {
-						p.HP = maxHP
-					}
-					p.Timers.HP = BASE_HP_REGEN
-					g.Players.SetDirty(p.Id)
-					g.Zones.SetDirty(z.Id)
-				}
-			} else {
-				p.Timers.HP -= 1
-			}
-
-			if p.Timers.AP <= 0 {
-				if p.AP < maxAP {
-					p.AP += 1
-					if p.AP > maxAP {
-						p.AP = maxAP
-					}
-					p.Timers.AP = BASE_AP_REGEN
-					g.Players.SetDirty(p.Id)
-					g.Zones.SetDirty(z.Id)
-				}
-			} else {
-				p.Timers.AP -= 1
-			}
+	for _, p := range z.Players {
+		if p.Timers.Move > 0 {
+			p.Timers.Move -= 1
 		}
 	}
 }
@@ -120,25 +80,21 @@ func (g *RPG) BuildCollisionMap(z *Zone) {
 			size := e.RootDef.Size
 			for x := 0; x < size[0]; x++ {
 				for y := 0; y < size[1]; y++ {
-					_x := e.X + x
-					_y := e.Y + y
+					_x := int(e.X) + x
+					_y := int(e.Y) + y
 					z.Map.SetBlocking(_x, _y, true)
 				}
 			}
 		}
 	}
 	for _, e := range z.NPCs {
-		z.Map.SetBlocking(e.X, e.Y, true)
+		z.Map.SetBlocking(int(e.X), int(e.Y), true)
 	}
 }
 
 func (g *RPG) BuildDisplayData(z *Zone) {
-	tiles := make([]tile, len(z.Map.Tiles))
 	idx := 0
-	for _, t := range z.Map.Tiles {
-		tiles[idx] = *t
-		idx++
-	}
+
 	entities := make([]EntityInfo, len(z.Entities))
 	idx = 0
 	for _, e := range z.Entities {
@@ -165,22 +121,15 @@ func (g *RPG) BuildDisplayData(z *Zone) {
 		npcs[idx] = n.GetInfo()
 		idx++
 	}
-	combatants := make([]CombatInfo, 0)
-	if z.CombatInfo.InCombat {
-		for _, info := range z.CombatInfo.Combatants {
-			combatants = append(combatants, *info)
-		}
-	}
 	z.DisplayData = ZoneDisplayData{
-		Name:              z.Name,
-		Map:               tiles,
-		Entities:          entities,
-		Players:           players,
-		Items:             items,
-		NPCs:              npcs,
-		InCombat:          z.CombatInfo.InCombat,
-		CurrentInitiative: z.CombatInfo.CurrentInitiative,
-		Combatants:        combatants,
+		Name:     z.Name,
+		Width:    z.Map.Width,
+		Height:   z.Map.Height,
+		Map:      z.Map.Tiles,
+		Entities: entities,
+		Players:  players,
+		Items:    items,
+		NPCs:     npcs,
 	}
 }
 
@@ -252,7 +201,6 @@ func (g *RPG) AddPlayer(z *Zone, player *Player, x, y int) {
 	player.Y = y
 
 	z.Players[player.Id] = player
-	g.CheckCombat(z)
 }
 
 func (g *RPG) RemovePlayer(z *Zone, player *Player) {
@@ -261,7 +209,6 @@ func (g *RPG) RemovePlayer(z *Zone, player *Player) {
 	}
 
 	delete(z.Players, player.Id)
-	g.CheckCombat(z)
 }
 
 func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
@@ -285,7 +232,7 @@ func (z *Zone) Move(x, y int, direction string) (int, int, bool) {
 	}
 
 	for _, p := range z.Players {
-		if _x == p.X && _y == p.Y {
+		if _x == int(p.X) && _y == int(p.Y) {
 			_x = x
 			_y = y
 		}

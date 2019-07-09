@@ -71,13 +71,10 @@ func NewItemDB(db *sql.DB) *ItemDB {
 func (db *ItemDB) New(def ItemDef) (Item, bool) {
 	db.log.Printf("Creating new item %s", def.Name)
 	item := Item{
-		Quality:    def.Quality,
-		Name:       def.Name,
-		Type:       def.Type,
-		MaxQty:     def.MaxQty,
-		Durability: def.Durability,
-		Price:      def.Price,
-		Stats:      def.Stats,
+		Quality: def.Quality,
+		Name:    def.Name,
+		Type:    def.Type,
+		// PowerLevel: def.PowerLevel,
 	}
 
 	err := db.DB.QueryRow(`INSERT INTO items (data) VALUES ($1) RETURNING id`, item).Scan(&item.Id)

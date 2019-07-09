@@ -22,10 +22,6 @@ func (g *RPG) PlayerUse(p *Player, z *Zone, params ActionParams) {
 
 	log.Printf("[rpg/zone/%s/use] using ent %d", z.Name, entId)
 
-	if !p.CheckAPCost(1) {
-		return
-	}
-
 	needsUpdate, err := g.UseEntity(z, ent, p)
 	if err != nil {
 		log.Printf("[rpg/zone/%s/use] failed to use ent %d (%s): %v", z.Name, entId, ent.Type, err)

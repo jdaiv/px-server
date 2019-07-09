@@ -1,38 +1,20 @@
 package rpg
 
-const OFFSET = int(int32(^uint32(0)>>1) / 2)
-
-func compactCoords(x, y int) uint64 {
-	_x := uint64(x + OFFSET)
-	_y := uint64(y + OFFSET)
-	return (_x << 32) ^ _y
-}
-
-func uncompactCoords(c uint64) (int, int) {
-	x := int(c >> 32)
-	y := int(c & 0xFFFFFFFF)
-	return (x - OFFSET), (y - OFFSET)
-}
-
 type tile struct {
 	Tile        int  `json:"id"`
-	X           int  `json:"x"`
-	Y           int  `json:"y"`
 	Blocking    bool `json:"-"`
 	BlockingEnt bool `json:"-"`
 }
 
 type ZoneMap struct {
-	MinX  int
-	MaxX  int
-	MinY  int
-	MaxY  int
-	Tiles map[uint64]*tile
+	Width  int
+	Height int
+	Tiles  []*tile
 }
 
 func NewZoneMap(width, height int, fill TileDef) *ZoneMap {
 	newMap := ZoneMap{
-		Tiles: make(map[uint64]*tile),
+		width, height, make([]*tile, width*height),
 	}
 
 	for x := 0; x < width; x++ {
@@ -44,34 +26,42 @@ func NewZoneMap(width, height int, fill TileDef) *ZoneMap {
 	return &newMap
 }
 
+func (m *ZoneMap) ClampedCoords(x, y int) int {
+	if x < 0 {
+		x = 0
+	}
+	if x >= m.Width {
+		x = m.Width - 1
+	}
+	if y < 0 {
+		y = 0
+	}
+	if y >= m.Height {
+		y = m.Height - 1
+	}
+	return y*m.Width + x
+}
+
 func (m *ZoneMap) SetTile(x, y int, t TileDef) {
-	if x < m.MinX {
-		m.MinX = x
-	}
-	if x > m.MaxX {
-		m.MaxX = x
-	}
-	if y < m.MinY {
-		m.MinY = y
-	}
-	if y > m.MaxY {
-		m.MaxY = y
-	}
-	m.Tiles[compactCoords(x, y)] = &tile{t.Id, x, y, t.Blocking, false}
+	i := m.ClampedCoords(x, y)
+	m.Tiles[i] = &tile{t.Id, t.Blocking, false}
 }
 
 func (m *ZoneMap) SetBlocking(x, y int, blocking bool) {
-	if t, ok := m.Tiles[compactCoords(x, y)]; ok {
-		t.BlockingEnt = true
-	}
+	i := m.ClampedCoords(x, y)
+	m.Tiles[i].BlockingEnt = true
 }
 
 func (m *ZoneMap) IsBlocking(x, y int) bool {
-	t, ok := m.Tiles[compactCoords(x, y)]
-	return !ok || t.Blocking || t.BlockingEnt
+	if x < 0 || x >= m.Width ||
+		y < 0 || y >= m.Height {
+		return true
+	}
+	i := m.ClampedCoords(x, y)
+	t := m.Tiles[i]
+	return t.Blocking || t.BlockingEnt
 }
 
-func (m *ZoneMap) GetTile(x, y int) (*tile, bool) {
-	t, ok := m.Tiles[compactCoords(x, y)]
-	return t, ok
+func (m *ZoneMap) GetTile(x, y int) *tile {
+	return m.Tiles[m.ClampedCoords(x, y)]
 }

@@ -11,7 +11,6 @@ var entityUseFuncs = map[string]func(*RPG, *Zone, *Entity, *Player) (bool, error
 	"use_sign":     UseSign,
 	"use_door":     UseDoor,
 	"spawn_item":   SpawnItem,
-	"modify_item":  ModifyItem,
 	"spawn_npc":    SpawnNPC,
 	"attack_dummy": AttackDummy,
 }
@@ -128,36 +127,6 @@ func SpawnItem(g *RPG, zone *Zone, ent *Entity, player *Player) (bool, error) {
 	g.AddItem(zone, itemType, int(x), int(y))
 
 	return true, nil
-}
-
-func ModifyItem(g *RPG, zone *Zone, ent *Entity, player *Player) (bool, error) {
-	modId, ok := ent.Fields.GetString("item_mod")
-	if !ok {
-		return false, errors.New("target item mod not found")
-	}
-	slot, ok := ent.Fields.GetString("target_slot")
-	if !ok {
-		return false, errors.New("target slot not found")
-	}
-	modDef, ok := g.Defs.ItemMods[modId]
-	if !ok {
-		return false, errors.New("item mod not found")
-	}
-
-	if itemId, ok := player.Slots[slot]; ok && itemId > 0 {
-		item, exists := g.Items.Get(itemId)
-		if !exists {
-			return false, errors.New("item not found")
-		}
-		if item.Modded {
-			return false, nil
-		}
-		item.ApplyMod(modDef)
-		g.Items.Save(item)
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func SpawnNPC(g *RPG, zone *Zone, ent *Entity, player *Player) (bool, error) {

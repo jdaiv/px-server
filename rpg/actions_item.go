@@ -22,10 +22,6 @@ func (g *RPG) PlayerTakeItem(p *Player, z *Zone, params ActionParams) {
 
 	log.Printf("[rpg/zone/%s/take_item] grabbing item %d", z.Name, itemId)
 
-	if !p.CheckAPCost(1) {
-		return
-	}
-
 	item.Give(p)
 	g.Items.Save(item)
 	delete(z.Items, itemId)
@@ -41,9 +37,6 @@ func (g *RPG) PlayerEquipItem(p *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	if !p.CheckAPCost(1) {
-		return
-	}
 	g.EquipItem(p, itemId)
 	g.BuildPlayer(p)
 }
@@ -55,9 +48,6 @@ func (g *RPG) PlayerUnequipItem(p *Player, zone *Zone, params ActionParams) {
 		return
 	}
 
-	if !p.CheckAPCost(1) {
-		return
-	}
 	g.UnequipItem(p, slot)
 	g.BuildPlayer(p)
 }

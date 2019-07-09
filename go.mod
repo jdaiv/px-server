@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.3.0
 	github.com/lib/pq v1.0.0
+	github.com/ojrac/opensimplex-go v1.0.1
 	github.com/sethvargo/go-password v0.1.2
 	golang.org/x/text v0.3.0
 )

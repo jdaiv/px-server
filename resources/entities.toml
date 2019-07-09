@@ -28,6 +28,20 @@ Type = 'int'
 Name = 'y'
 Type = 'int'
 
+[zone_door]
+DefaultName = 'ZONE_DOOR_DEFAULT_NAME'
+Size = [1, 1]
+Usable = true
+UseText = 'enter'
+Blocking = true
+UseFunc = 'use_zone_door'
+[[door.fields]]
+Name = 'target_zone'
+Type = 'zone'
+[[door.fields]]
+Name = 'direction'
+Type = 'string'
+
 [item_spawner]
 DefaultName = 'ITEM_SPAWNER_DEFAULT_NAME'
 Size = [1, 1]

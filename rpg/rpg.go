@@ -108,11 +108,6 @@ func (g *RPG) HandleMessages() {
 				continue
 			}
 
-			if !g.CanAct(zone, p) {
-				log.Printf("player tried to act out of order %s", p.Name)
-				continue
-			}
-
 			oldZone := p.CurrentZone
 
 			g.Players.SetDirty(p.Id)
@@ -130,13 +125,9 @@ func (g *RPG) HandleMessages() {
 				g.PlayerUnequipItem(p, zone, incoming.Data.Params)
 			case ACTION_DROP_ITEM:
 				g.PlayerDropItem(p, zone, incoming.Data.Params)
-			case ACTION_ATTACK:
-				g.PlayerAttack(p, zone, incoming.Data.Params)
 			}
 
-			g.PostPlayerAction(zone, p)
 			g.BuildPlayer(p)
-			g.CheckCombat(zone)
 			g.BuildCollisionMap(zone)
 
 			g.Players.Commit()
@@ -221,9 +212,6 @@ func (g *RPG) PlayerJoin(msg IncomingMessage) {
 	if !ValidFace(p.Facing) {
 		p.Facing = "N"
 	}
-	if p.HP <= 0 {
-		p.HP = p.Stats.MaxHP
-	}
 
 	if z, hasZone := g.Zones.Get(p.CurrentZone); hasZone {
 		g.AddPlayer(z, p, p.X, p.Y)
@@ -261,42 +249,10 @@ func (g *RPG) SaveAll() {
 	g.Zones.Commit()
 }
 
-func (g *RPG) KillPlayer(p *Player) {
-	zone, ok := g.Zones.Get(p.CurrentZone)
-	if ok {
-		ent, err := g.AddEntity(zone, "corpse", p.X, p.Y, false)
-		if err == nil {
-			ent.Name = "corpse of " + p.Name
-			ent.Fields["type"] = "player"
-		}
-		g.Zones.SetDirty(p.CurrentZone)
-		g.SendEffect(zone, "wood_ex", effectParams{
-			"x": p.X,
-			"y": p.Y,
-		})
-	}
-	g.PlayerReset(p)
-}
-
-func (g *RPG) KillNPC(z *Zone, n *NPC) {
-	delete(z.NPCs, n.Id)
-	ent, err := g.AddEntity(z, "corpse", n.X, n.Y, false)
-	if err == nil {
-		ent.Name = "corpse of " + n.Name
-		ent.Fields["type"] = n.Type
-	}
-	g.SendEffect(z, "wood_ex", effectParams{
-		"x": n.X,
-		"y": n.Y,
-	})
-	g.Zones.SetDirty(z.Id)
-}
-
 func (g *RPG) PlayerReset(p *Player) {
 	if z, ok := g.Zones.Get(p.CurrentZone); ok {
 		g.RemovePlayer(z, p)
 	}
-	p.HP = p.Stats.MaxHP
 	zone, _ := g.Zones.Get(1)
 	g.AddPlayer(zone, p, -1, -1)
 

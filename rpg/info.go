@@ -1,23 +1,20 @@
 package rpg
 
 type PlayerInfo struct {
-	Id        int                  `json:"id"`
-	Name      string               `json:"name"`
-	Slots     map[string]ItemInfo  `json:"slots"`
-	Inventory map[int]ItemInfo     `json:"inventory,omitempty"`
-	Spells    map[string]SpellInfo `json:"spells,omitempty"`
+	Id        int                 `json:"id"`
+	Name      string              `json:"name"`
+	Slots     map[string]ItemInfo `json:"slots"`
+	Inventory map[int]ItemInfo    `json:"inventory,omitempty"`
 
 	X      int    `json:"x"`
 	Y      int    `json:"y"`
 	Facing string `json:"facing"`
 
-	HP     int        `json:"hp"`
-	MaxHP  int        `json:"maxHP"`
-	AP     int        `json:"ap,omitempty"`
-	MaxAP  int        `json:"maxAP,omitempty"`
-	Stats  StatBlock  `json:"stats,omitempty"`
-	Level  int        `json:"level"`
-	Skills SkillBlock `json:"skills,omitempty"`
+	HP    int `json:"hp"`
+	MaxHP int `json:"maxHP"`
+	MP    int `json:"mp,omitempty"`
+	MaxMP int `json:"maxMP,omitempty"`
+	Level int `json:"level"`
 }
 
 func (p *Player) GetInfo(base *RPG) PlayerInfo {
@@ -28,56 +25,46 @@ func (p *Player) GetInfo(base *RPG) PlayerInfo {
 		}
 	}
 
-	spells := make(map[string]SpellInfo)
-	for id, s := range base.GetSpellsFor(p) {
-		spells[id] = s.GetInfo()
-	}
-
+	slots, powerLevel := p.GetSlotInfo(base)
 	return PlayerInfo{
 		Id:        p.Id,
 		Name:      p.Name,
-		Slots:     p.GetSlotInfo(base),
+		Slots:     slots,
 		Inventory: inv,
-		Spells:    spells,
 		X:         p.X,
 		Y:         p.Y,
 		Facing:    p.Facing,
-		HP:        p.HP,
-		AP:        p.AP,
-		MaxHP:     p.Stats.MaxHP,
-		MaxAP:     p.Stats.MaxAP,
-		Stats:     p.Stats,
-		Skills:    p.Skills,
-		Level:     p.Skills.TotalLevel(),
+		Level:     powerLevel,
 	}
 }
 
 func (p Player) GetInfoPublic(base *RPG) PlayerInfo {
+	slots, powerLevel := p.GetSlotInfo(base)
 	return PlayerInfo{
 		Id:     p.Id,
 		Name:   p.Name,
-		Slots:  p.GetSlotInfo(base),
+		Slots:  slots,
 		X:      p.X,
 		Y:      p.Y,
 		Facing: p.Facing,
-		HP:     p.HP,
-		MaxHP:  p.Stats.MaxHP,
-		Level:  p.Skills.TotalLevel(),
+		Level:  powerLevel,
 	}
 }
 
-func (p Player) GetSlotInfo(base *RPG) map[string]ItemInfo {
+func (p Player) GetSlotInfo(base *RPG) (map[string]ItemInfo, int) {
 	slots := make(map[string]ItemInfo)
+	powerLevel := 0
 	for slot, id := range p.Slots {
 		if p.Slots[slot] != -1 {
 			if item, ok := base.Items.Get(id); ok {
 				slots[slot] = item.GetInfo()
+				powerLevel += slots[slot].PowerLevel
 			}
 		} else {
 			slots[slot] = ItemInfo{Type: "empty"}
 		}
 	}
-	return slots
+	return slots, powerLevel
 }
 
 type EntityInfo struct {
@@ -118,14 +105,11 @@ func (e Entity) GetInfo() EntityInfo {
 }
 
 type ItemInfo struct {
-	Id           int          `json:"id"`
-	Quality      int          `json:"quality"`
-	Name         string       `json:"name"`
-	Type         string       `json:"type"`
-	Durability   int          `json:"durability"`
-	Price        int          `json:"price"`
-	Stats        StatBlock    `json:"stats"`
-	SpecialAttrs SpecialBlock `json:"specials"`
+	Id         int    `json:"id"`
+	Quality    int    `json:"quality"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	PowerLevel int    `json:"powerLevel"`
 
 	X int `json:"x"`
 	Y int `json:"y"`
@@ -133,16 +117,13 @@ type ItemInfo struct {
 
 func (i Item) GetInfo() ItemInfo {
 	return ItemInfo{
-		Id:           i.Id,
-		Name:         i.Name,
-		Quality:      i.Quality,
-		Type:         i.Type,
-		Durability:   i.Durability,
-		Price:        i.Price,
-		SpecialAttrs: i.SpecialAttrs,
-		Stats:        i.Stats,
-		X:            i.X,
-		Y:            i.Y,
+		Id:         i.Id,
+		Name:       i.Name,
+		Quality:    i.Quality,
+		Type:       i.Type,
+		PowerLevel: i.PowerLevel,
+		X:          i.X,
+		Y:          i.Y,
 	}
 }
 
@@ -159,28 +140,10 @@ type NPCInfo struct {
 
 func (n NPC) GetInfo() NPCInfo {
 	return NPCInfo{
-		Id:        n.Id,
-		Name:      n.Name,
-		Type:      n.Type,
-		X:         n.X,
-		Y:         n.Y,
-		HP:        n.HP,
-		MaxHP:     n.MaxHP,
-		Alignment: n.Alignment,
-	}
-}
-
-type SpellInfo struct {
-	Name  string `json:"name"`
-	Skill string `json:"skill"`
-	Level int    `json:"level"`
-	Cost  int    `json:"cost"`
-}
-
-func (s SpellDef) GetInfo() SpellInfo {
-	return SpellInfo{
-		Name:  s.Name,
-		Level: s.Level,
-		Cost:  s.Cost,
+		Id:   n.Id,
+		Name: n.Name,
+		Type: n.Type,
+		X:    n.X,
+		Y:    n.Y,
 	}
 }
